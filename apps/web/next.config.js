@@ -17,9 +17,11 @@ const nextConfig = {
     "@repo/auth",
     "@repo/config",
     "@repo/database",
+    "@repo/mail",
     "@repo/types",
     "@repo/ui",
   ],
+  serverExternalPackages: ["nodemailer"],
   // Ensure public env is present for Next's compile-time inlining into client bundles.
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,

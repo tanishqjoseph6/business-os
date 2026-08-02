@@ -150,21 +150,34 @@ export async function sendWaitlistInternalNotification(
  * Never throws — signup must succeed even when email delivery fails.
  */
 export async function sendWaitlistSignupEmails(input: WaitlistSignupEmailInput): Promise<void> {
+  console.info("[mail] waitlist signup email flow started", {
+    email: input.email,
+    name: input.name,
+    timestamp: input.timestamp,
+  });
+
   try {
     const [welcomeSent, internalSent] = await Promise.all([
       sendWaitlistWelcomeEmail({ email: input.email }),
       sendWaitlistInternalNotification(input),
     ]);
 
-    if (!welcomeSent || !internalSent) {
-      console.error("[mail] Waitlist signup emails partially failed:", {
+    if (welcomeSent && internalSent) {
+      console.info("[mail] waitlist signup emails sent successfully", {
         email: input.email,
         welcomeSent,
         internalSent,
       });
+      return;
     }
+
+    console.error("[mail] waitlist signup emails partially failed", {
+      email: input.email,
+      welcomeSent,
+      internalSent,
+    });
   } catch (error) {
-    console.error("[mail] Unexpected waitlist email error:", {
+    console.error("[mail] unexpected waitlist email error", {
       email: input.email,
       error,
     });

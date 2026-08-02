@@ -40,10 +40,21 @@ export async function joinWaitlistAction(input: {
   });
 
   if (result.ok) {
-    void sendWaitlistSignupEmails({
+    console.info("[waitlist] signup saved; starting confirmation emails", {
+      entryId: result.entry.id,
+      email: result.entry.email,
+    });
+
+    // Await delivery so serverless runtimes do not terminate before SMTP completes.
+    await sendWaitlistSignupEmails({
       name: result.entry.name,
       email: result.entry.email,
       timestamp: result.entry.createdAt,
+    });
+
+    console.info("[waitlist] confirmation email flow finished", {
+      entryId: result.entry.id,
+      email: result.entry.email,
     });
   }
 

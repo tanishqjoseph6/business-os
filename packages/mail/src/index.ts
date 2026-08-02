@@ -1,5 +1,14 @@
-export { getSmtpEnv, isSmtpConfigured, type SmtpEnv } from "./env";
-export { getMailTransport } from "./transport";
+export {
+  getSmtpEnv,
+  getSmtpEnvDiagnostics,
+  isSmtpConfigured,
+  logSmtpEnvDiagnostics,
+  type SmtpEnv,
+  type SmtpEnvDiagnostics,
+  type SmtpEnvKey,
+} from "./env";
+export { formatMailError } from "./errors";
+export { getMailTransport, verifyMailTransport } from "./transport";
 export { sendMail, type SendMailInput } from "./send";
 export {
   sendWaitlistInternalNotification,
