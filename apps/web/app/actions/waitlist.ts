@@ -6,6 +6,7 @@ import {
   type WaitlistTeamSize,
   WAITLIST_TEAM_SIZES,
 } from "@repo/database/waitlist";
+import { sendWaitlistSignupEmails } from "@repo/mail/waitlist";
 
 async function getSiteUrl() {
   const headerStore = await headers();
@@ -33,8 +34,18 @@ export async function joinWaitlistAction(input: {
     };
   }
 
-  return joinWaitlist({
+  const result = await joinWaitlist({
     ...input,
     siteUrl: await getSiteUrl(),
   });
+
+  if (result.ok) {
+    void sendWaitlistSignupEmails({
+      name: result.entry.name,
+      email: result.entry.email,
+      timestamp: result.entry.createdAt,
+    });
+  }
+
+  return result;
 }

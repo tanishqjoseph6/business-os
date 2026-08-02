@@ -49,7 +49,12 @@
     "PAYPAL_CLIENT_ID",
     "PAYPAL_CLIENT_SECRET",
     "DROPBOX_CLIENT_ID",
-    "DROPBOX_CLIENT_SECRET"
+    "DROPBOX_CLIENT_SECRET",
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_USER",
+    "SMTP_PASS",
+    "SMTP_FROM"
   ],
   "tasks": {
     "build": {
