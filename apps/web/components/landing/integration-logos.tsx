@@ -50,7 +50,9 @@ const ICON_MAP: Record<string, SimpleIcon> = {
   google: siGoogle,
   gmail: siGmail,
   googlecalendar: siGooglecalendar,
+  "google-calendar": siGooglecalendar,
   googledrive: siGoogledrive,
+  "google-drive": siGoogledrive,
   discord: siDiscord,
   notion: siNotion,
   github: siGithub,
@@ -177,7 +179,7 @@ export function IntegrationLogo({ id, className = "h-9 w-9" }: { id: string; cla
     );
   }
 
-  const custom = CUSTOM_SVGS[id];
+  const custom = CUSTOM_SVGS[id === "outlook" ? "microsoftoutlook" : id];
   if (custom) {
     return (
       <svg role="img" viewBox={custom.viewBox} className={className} aria-hidden>

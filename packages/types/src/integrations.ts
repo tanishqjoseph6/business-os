@@ -38,6 +38,7 @@ export type IntegrationSyncJobStatus = z.infer<
 
 export const integrationHubCategorySchema = z.enum([
   "featured",
+  "ai",
   "google",
   "microsoft",
   "communication",

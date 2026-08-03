@@ -4,7 +4,7 @@ import { PricingPage } from "../../components/pricing/pricing-page";
 export const metadata: Metadata = {
   title: "Pricing | VanderBase",
   description:
-    "Own VanderBase with a one-time purchase. Buy AI credits only when you need them. Free, Pro $99 once, credit packs, and enterprise.",
+    "Simple, transparent pricing for VanderBase teams. Free, Pro, and Business plans with flexible yearly billing.",
 };
 
 export default function PricingRoute() {

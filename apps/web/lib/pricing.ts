@@ -1,9 +1,5 @@
-/**
- * VanderBase pricing — one-time ownership model.
- * No monthly/yearly subscriptions. Buy Pro once; buy AI credits when needed.
- */
-
-export type PricingPlanId = "free" | "pro" | "enterprise";
+/** Shared production pricing configuration used by the landing and billing pages. */
+export type PricingPlanId = "free" | "pro" | "business";
 
 export type PricingPlan = {
   id: PricingPlanId;
@@ -11,8 +7,10 @@ export type PricingPlan = {
   description: string;
   /** One-time price in USD. null = custom / contact sales. */
   price: number | null;
+  monthlyPrice: number;
+  yearlyPrice: number;
   /** Billing cadence label shown in UI. */
-  billingLabel: "Free forever" | "One-time purchase" | "Custom pricing";
+  billingLabel: "Free forever" | "One-time purchase" | "Custom pricing" | "Monthly or yearly";
   credits: number | null;
   teamMembers: number | null;
   workspaces: number | null;
@@ -39,8 +37,16 @@ export type TeamSeatProduct = {
   description: string;
 };
 
+export type StorageAddon = {
+  id: string;
+  label: string;
+  gb: number;
+  monthlyPrice: number;
+  popular?: boolean;
+};
+
 export const PRICING_TAGLINE =
-  "Own VanderBase with a one-time purchase. Buy AI credits only when you need them.";
+  "Simple, transparent pricing that scales with your business.";
 
 export const PRICING_PLANS: PricingPlan[] = [
   {
@@ -48,59 +54,72 @@ export const PRICING_PLANS: PricingPlan[] = [
     name: "Free",
     description: "Start with the essentials—no card required.",
     price: 0,
+    monthlyPrice: 0,
+    yearlyPrice: 0,
     billingLabel: "Free forever",
     credits: 100,
     teamMembers: 3,
     workspaces: 1,
     features: [
       "1 Workspace",
-      "Up to 3 Team Members",
-      "100 AI Credits",
-      "Basic Business OS Features",
+      "2 AI Agents",
+      "250 Audit Events / month",
+      "5 GB Storage",
     ],
-    cta: "Get started free",
+    cta: "Get Started",
     ctaHref: "/?join=waitlist",
   },
   {
     id: "pro",
     name: "Pro",
-    description: "Own the full Business OS with a single purchase.",
-    price: 99,
-    billingLabel: "One-time purchase",
-    credits: 1000,
-    teamMembers: 10,
-    workspaces: 1,
-    popular: true,
-    features: [
-      "1 Workspace",
-      "Up to 10 Team Members",
-      "All Business OS Modules",
-      "Advanced AI Features",
-      "Priority Support",
-      "1,000 AI Credits Included",
-    ],
-    cta: "Buy Pro — $99",
-    ctaHref: "/checkout?product=pro",
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    description: "Security, scale, and support shaped around your org.",
-    price: null,
-    billingLabel: "Custom pricing",
+    description: "For teams turning repeatable work into leverage.",
+    price: 59,
+    monthlyPrice: 59,
+    yearlyPrice: 649,
+    billingLabel: "Monthly or yearly",
     credits: null,
     teamMembers: null,
-    workspaces: null,
+    workspaces: 5,
+    popular: true,
     features: [
-      "Custom Pricing",
-      "SSO",
-      "Dedicated Support",
-      "Custom Integrations",
-      "SLA",
+      "Up to 10 AI Agents",
+      "Up to 5 Workspaces",
+      "5,000 Audit Events / month",
+      "50K API Calls / month",
+      "50 GB Storage",
     ],
-    cta: "Contact sales",
+    cta: "Start Free Trial",
+    ctaHref: "/signup",
+  },
+  {
+    id: "business",
+    name: "Business",
+    description: "For sophisticated operations with room to scale.",
+    price: 149,
+    monthlyPrice: 149,
+    yearlyPrice: 1639,
+    billingLabel: "Monthly or yearly",
+    credits: null,
+    teamMembers: null,
+    workspaces: 20,
+    features: [
+      "Up to 50 AI Agents",
+      "Up to 20 Workspaces",
+      "15,000 Audit Events / month",
+      "250K API Calls / month",
+      "250 GB Storage",
+    ],
+    cta: "Contact Sales",
     ctaHref: "mailto:sales@vanderbase.com",
   },
+];
+
+export const STORAGE_ADDONS: StorageAddon[] = [
+  { id: "storage-25", label: "+25 GB", gb: 25, monthlyPrice: 9 },
+  { id: "storage-100", label: "+100 GB", gb: 100, monthlyPrice: 29, popular: true },
+  { id: "storage-250", label: "+250 GB", gb: 250, monthlyPrice: 59 },
+  { id: "storage-500", label: "+500 GB", gb: 500, monthlyPrice: 99 },
+  { id: "storage-1tb", label: "+1 TB", gb: 1000, monthlyPrice: 179 },
 ];
 
 export const ADDITIONAL_TEAM_SEAT: TeamSeatProduct = {
@@ -166,17 +185,13 @@ export const AI_CREDIT_PACKS: CreditPack[] = [
 ];
 
 export const COMPARISON_ROWS: string[][] = [
-  ["Price", "$0", "$99 once", "Custom"],
-  ["Billing", "Free forever", "One-time purchase", "Custom"],
-  ["Workspaces", "1", "1", "Custom"],
-  ["Team members", "Up to 3", "Up to 10", "Custom"],
-  ["AI credits included", "100", "1,000", "Custom"],
-  ["Business OS modules", "Basic", "All modules", "All + custom"],
-  ["Advanced AI", "—", "Included", "Included"],
-  ["Priority support", "—", "Included", "Dedicated"],
-  ["SSO", "—", "—", "Included"],
-  ["Custom integrations", "—", "—", "Included"],
-  ["SLA", "—", "—", "Included"],
+  ["Price", "$0 / month", "$59 / month", "$149 / month"],
+  ["Yearly", "$0 / year", "$649 / year", "$1,639 / year"],
+  ["Workspaces", "1", "5", "20"],
+  ["AI agents", "2", "10", "50"],
+  ["Audit events", "250 / month", "5,000 / month", "15,000 / month"],
+  ["API calls", "—", "50K / month", "250K / month"],
+  ["Storage", "5 GB", "50 GB", "250 GB"],
 ];
 
 export const CREDITS_USAGE_HINT =

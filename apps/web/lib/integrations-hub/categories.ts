@@ -6,6 +6,7 @@ export const INTEGRATION_HUB_CATEGORIES: {
   emoji?: string;
 }[] = [
   { id: "featured", label: "Featured", emoji: "⭐" },
+  { id: "ai", label: "AI", emoji: "✦" },
   { id: "google", label: "Google" },
   { id: "microsoft", label: "Microsoft" },
   { id: "communication", label: "Communication" },

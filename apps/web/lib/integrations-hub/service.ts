@@ -39,7 +39,10 @@ const FALLBACK_CATALOG: IntegrationCatalogItem[] = getLaunchProviders().map(
 export async function loadIntegrationCatalog(): Promise<IntegrationCatalogItem[]> {
   try {
     const rows = await listIntegrationCatalog();
-    if (rows.length > 0) return rows;
+    if (rows.length > 0) {
+      const known = new Set(rows.map((row) => row.id));
+      return [...rows, ...FALLBACK_CATALOG.filter((row) => !known.has(row.id))];
+    }
   } catch {
     // Migration may not be applied yet — fall back to code catalog.
   }

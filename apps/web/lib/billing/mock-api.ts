@@ -1,3 +1,5 @@
+import { PRICING_PLANS } from "../pricing";
+
 export type BillingPlanId = "free" | "pro" | "business";
 export type BillingInterval = "monthly" | "yearly";
 export type SubscriptionStatus = "active" | "trialing" | "past_due" | "paused" | "cancelled";
@@ -56,36 +58,23 @@ export type BillingSnapshot = {
   paymentMethods: PaymentMethod[];
 };
 
-export const billingPlans: BillingPlan[] = [
-  {
-    id: "free",
-    name: "Free",
-    description: "For exploring the KorClaw workspace.",
-    monthlyPrice: 0,
-    yearlyPrice: 0,
-    features: ["1 Workspace", "Up to 2 AI Agents", "250 Audit Events / month", "5 GB Storage", "Community Support"],
-    limits: { agents: 2, auditEvents: 250, apiCalls: 0, storageGb: 5, seats: 3, workspaces: 1 },
+export const billingPlans: BillingPlan[] = PRICING_PLANS.map((plan) => ({
+  id: plan.id,
+  name: plan.name,
+  description: plan.description,
+  monthlyPrice: plan.monthlyPrice,
+  yearlyPrice: plan.yearlyPrice,
+  popular: plan.popular,
+  features: plan.features,
+  limits: {
+    agents: plan.id === "free" ? 2 : plan.id === "pro" ? 10 : 50,
+    auditEvents: plan.id === "free" ? 250 : plan.id === "pro" ? 5000 : 15000,
+    apiCalls: plan.id === "free" ? 0 : plan.id === "pro" ? 50000 : 250000,
+    storageGb: plan.id === "free" ? 5 : plan.id === "pro" ? 50 : 250,
+    seats: plan.id === "free" ? 3 : plan.id === "pro" ? 10 : 50,
+    workspaces: plan.workspaces ?? 1,
   },
-  {
-    id: "pro",
-    name: "Pro",
-    description: "For teams turning repeatable work into leverage.",
-    monthlyPrice: 59,
-    yearlyPrice: 649,
-    popular: true,
-    features: ["Up to 5 Workspaces", "Up to 10 AI Agents", "5,000 Audit Events / month", "50,000 API Calls / month", "50 GB Storage", "Priority Support", "All Core KorClaw Features"],
-    limits: { agents: 10, auditEvents: 5000, apiCalls: 50000, storageGb: 50, seats: 10, workspaces: 5 },
-  },
-  {
-    id: "business",
-    name: "Business",
-    description: "For sophisticated operations with room to scale.",
-    monthlyPrice: 149,
-    yearlyPrice: 1639,
-    features: ["Up to 20 Workspaces", "Up to 50 AI Agents", "15,000 Audit Events / month", "250,000 API Calls / month", "250 GB Storage", "API Access", "Advanced Admin Controls", "Team Management", "Audit Logs", "Priority Support"],
-    limits: { agents: 50, auditEvents: 15000, apiCalls: 250000, storageGb: 250, seats: 50, workspaces: 20 },
-  },
-];
+}));
 
 export const mockBillingSnapshot: BillingSnapshot = {
   plan: "pro",

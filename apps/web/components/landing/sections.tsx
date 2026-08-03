@@ -22,8 +22,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { Button } from "@repo/ui/button";
-import { COMPARISON_ROWS, PRICING_PLANS } from "../../lib/pricing";
-import { PlanCreditsBlock } from "../pricing/plan-credits-block";
+import { COMPARISON_ROWS, PRICING_PLANS, STORAGE_ADDONS } from "../../lib/pricing";
 import { KairosAvatar } from "../kairos/kairos-avatar";
 import { JoinWaitlistButton } from "./ai-assistant-widget";
 import { Reveal } from "./atmosphere";
@@ -468,17 +467,33 @@ export function AiShowcase() {
 
 export function PricingSection() {
   const { openOverlay } = useLandingInteractions();
+  const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
   return (
     <section id="pricing" className="relative px-5 py-20 sm:px-8">
       <div className="mx-auto max-w-7xl">
         <Reveal className="mx-auto max-w-2xl text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Pricing</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">
-            Own VanderBase with a one-time purchase.
+            Plans that scale with your business.
           </h2>
           <p className="mt-4 text-sm leading-6 text-secondary">
-            Buy AI credits only when you need them. No monthly or yearly subscriptions.
+            Simple, transparent pricing with the flexibility to grow.
           </p>
+          <div className="mx-auto mt-7 inline-flex rounded-2xl border border-white/10 bg-white/[0.04] p-1">
+            {(["monthly", "yearly"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setInterval(value)}
+                className={`rounded-xl px-4 py-2 text-xs font-semibold capitalize transition ${
+                  interval === value ? "bg-primary text-white shadow-soft" : "text-secondary hover:text-foreground"
+                }`}
+              >
+                {value}
+                {value === "yearly" ? <span className="ml-1.5 text-success">Save 8%</span> : null}
+              </button>
+            ))}
+          </div>
           <div className="mx-auto mt-6 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
@@ -525,30 +540,38 @@ export function PricingSection() {
                       <span className="text-3xl font-semibold tracking-tight">Custom</span>
                     ) : (
                       <>
-                        <span className="text-3xl font-semibold tracking-tight">${plan.price}</span>
+                        <motion.span
+                          key={`${plan.id}-${interval}`}
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-3xl font-semibold tracking-tight"
+                        >
+                          ${interval === "monthly" ? plan.monthlyPrice : plan.yearlyPrice}
+                        </motion.span>
                         {plan.price > 0 ? (
-                          <span className="text-xs text-muted">once</span>
+                          <span className="text-xs text-muted">/{interval === "monthly" ? "month" : "year"}</span>
                         ) : null}
                       </>
                     )}
                   </div>
-                  <p className="mt-1 text-[11px] font-medium text-primary">{plan.billingLabel}</p>
-                  <PlanCreditsBlock plan={plan} highlighted={plan.popular} />
+                  <p className="mt-1 text-[11px] font-medium text-primary">
+                    {interval === "yearly" && plan.id !== "free" ? "1 month free" : plan.billingLabel}
+                  </p>
                 </div>
-                {plan.id === "enterprise" ? (
+                {plan.id === "business" ? (
                   <Link href="mailto:sales@vanderbase.com" className="mt-5 block">
                     <Button variant="secondary" className="w-full">
-                      Contact sales
+                      Contact Sales
                     </Button>
                   </Link>
                 ) : plan.id === "pro" ? (
-                  <Link href="/checkout?product=pro" className="mt-5 block">
-                    <Button className="w-full">Buy Pro — $99</Button>
+                  <Link href="/signup" className="mt-5 block">
+                    <Button className="w-full">Start Free Trial</Button>
                   </Link>
                 ) : (
                   <JoinWaitlistButton className="mt-5 block w-full">
                     <Button variant="secondary" className="w-full">
-                      Get started free
+                      Get Started
                     </Button>
                   </JoinWaitlistButton>
                 )}
@@ -566,20 +589,26 @@ export function PricingSection() {
         </div>
 
         <Reveal className="mt-10">
-          <div className="landing-glass rounded-3xl p-6 sm:flex sm:items-center sm:justify-between sm:gap-6">
-            <div>
-              <p className="text-sm font-semibold">Additional team members</p>
-              <p className="mt-1 text-xs text-secondary">
-                $25 per member · one-time purchase. Expand beyond Free (3) or Pro (10) seats.
-              </p>
-            </div>
-            <Link href="/checkout?product=additional-seat" className="mt-4 block sm:mt-0">
-              <Button variant="secondary" size="sm">
-                Add seats
-              </Button>
-            </Link>
+          <div className="mb-5 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Storage add-ons</p>
+            <p className="mt-2 text-sm text-secondary">Storage add-ons can be purchased at any time and stack with your current plan.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {STORAGE_ADDONS.map((addon) => (
+              <motion.div key={addon.id} whileHover={{ y: -4 }} className={`landing-glass relative rounded-2xl p-4 ${addon.popular ? "border border-primary/50 shadow-[0_0_30px_rgba(249,115,22,0.12)]" : ""}`}>
+                {addon.popular ? <span className="absolute -top-2.5 left-3 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white">Most Popular</span> : null}
+                <p className="text-sm font-semibold">{addon.label}</p>
+                <p className="mt-3 text-2xl font-semibold">${addon.monthlyPrice}<span className="text-xs font-normal text-muted"> / month</span></p>
+                <Button size="sm" variant="secondary" className="mt-4 w-full">Add storage</Button>
+              </motion.div>
+            ))}
           </div>
         </Reveal>
+
+        <div className="mt-8 flex flex-col items-center justify-center gap-2 text-center text-xs text-muted sm:flex-row">
+          <span>🔒 Secure payments powered by Stripe</span>
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1">Stripe Checkout Coming Soon</span>
+        </div>
 
         <Reveal className="mt-10 overflow-x-auto rounded-3xl border border-white/10">
           <table className="w-full min-w-[640px] text-left text-xs">

@@ -3,6 +3,7 @@ import "server-only";
 import {
   registerIntegrationProvider,
   type IntegrationProviderDefinition,
+  type OAuthAccountProfile,
   type OAuthTokenSet,
 } from "./provider";
 
@@ -227,6 +228,29 @@ function defineStubProvider(
   };
 }
 
+function defineApiKeyProvider(
+  input: Omit<IntegrationProviderDefinition, "buildAuthUrl" | "exchangeCode" | "fetchProfile" | "isConfigured" | "requiredEnv"> & {
+    requiredEnv: string[];
+    isConfigured: () => boolean;
+  },
+): IntegrationProviderDefinition {
+  return {
+    ...input,
+    connectionType: "api_key",
+    requiredEnv: input.requiredEnv,
+    isConfigured: input.isConfigured,
+    buildAuthUrl: () => {
+      throw new Error(`${input.name} uses a server-side API key, not OAuth`);
+    },
+    exchangeCode: async () => {
+      throw new Error(`${input.name} uses a server-side API key, not OAuth`);
+    },
+    fetchProfile: async () => {
+      throw new Error(`${input.name} uses a server-side API key, not OAuth`);
+    },
+  };
+}
+
 function defineGoogleProvider(input: {
   id: IntegrationProviderDefinition["id"];
   name: string;
@@ -256,7 +280,290 @@ function defineGoogleProvider(input: {
   };
 }
 
+async function slackExchange(input: { code: string; redirectUri: string }): Promise<OAuthTokenSet> {
+  const response = await fetch("https://slack.com/api/oauth.v2.access", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code: input.code,
+      client_id: process.env.SLACK_CLIENT_ID!.trim(),
+      client_secret: process.env.SLACK_CLIENT_SECRET!.trim(),
+      redirect_uri: input.redirectUri,
+    }),
+  });
+  const data = (await response.json()) as {
+    ok?: boolean;
+    error?: string;
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+    token_type?: string;
+    team?: { id?: string; name?: string };
+    authed_user?: { id?: string };
+  };
+  if (!response.ok || !data.ok || !data.access_token) {
+    throw new Error(`Slack token exchange failed: ${data.error ?? response.statusText}`);
+  }
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token ?? null,
+    expiresAt: expiresIn(data.expires_in),
+    scopes: ["channels:read", "chat:write", "users:read"],
+    tokenType: data.token_type ?? "Bearer",
+    metadata: {
+      workspaceId: data.team?.id ?? null,
+      workspaceName: data.team?.name ?? null,
+      userId: data.authed_user?.id ?? null,
+    },
+  };
+}
+
+async function slackRefresh(refreshToken: string): Promise<OAuthTokenSet> {
+  const response = await fetch("https://slack.com/api/oauth.v2.access", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: process.env.SLACK_CLIENT_ID!.trim(),
+      client_secret: process.env.SLACK_CLIENT_SECRET!.trim(),
+    }),
+  });
+  const data = (await response.json()) as {
+    ok?: boolean;
+    error?: string;
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+    token_type?: string;
+  };
+  if (!response.ok || !data.ok || !data.access_token) {
+    throw new Error(`Slack token refresh failed: ${data.error ?? response.statusText}`);
+  }
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token ?? refreshToken,
+    expiresAt: expiresIn(data.expires_in),
+    scopes: ["channels:read", "chat:write", "users:read"],
+    tokenType: data.token_type ?? "Bearer",
+  };
+}
+
+async function slackProfile(accessToken: string): Promise<OAuthAccountProfile> {
+  const response = await fetch("https://slack.com/api/auth.test", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  const data = (await response.json()) as {
+    ok?: boolean;
+    error?: string;
+    user_id?: string;
+    user?: string;
+    team_id?: string;
+    team?: string;
+  };
+  if (!response.ok || !data.ok) {
+    throw new Error(`Slack profile lookup failed: ${data.error ?? response.statusText}`);
+  }
+  return {
+    email: null,
+    name: data.team ?? data.user ?? "Slack workspace",
+    externalAccountId: data.team_id ?? data.user_id ?? "slack-workspace",
+  };
+}
+
+async function notionExchange(input: { code: string; redirectUri: string }): Promise<OAuthTokenSet> {
+  const clientId = process.env.NOTION_CLIENT_ID!.trim();
+  const clientSecret = process.env.NOTION_CLIENT_SECRET!.trim();
+  const response = await fetch("https://api.notion.com/v1/oauth/token", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
+      "Content-Type": "application/json",
+      "Notion-Version": "2022-06-28",
+    },
+    body: JSON.stringify({
+      grant_type: "authorization_code",
+      code: input.code,
+      redirect_uri: input.redirectUri,
+    }),
+  });
+  const data = (await response.json()) as {
+    access_token?: string;
+    bot_id?: string;
+    workspace_id?: string;
+    workspace_name?: string;
+    owner?: { user?: { id?: string; name?: string; person?: { email?: string } } };
+    error?: string;
+  };
+  if (!response.ok || !data.access_token) {
+    throw new Error(`Notion token exchange failed: ${data.error ?? response.statusText}`);
+  }
+  return {
+    accessToken: data.access_token,
+    refreshToken: null,
+    expiresAt: null,
+    scopes: [],
+    tokenType: "Bearer",
+    metadata: {
+      workspaceId: data.workspace_id ?? null,
+      workspaceName: data.workspace_name ?? null,
+      botId: data.bot_id ?? null,
+      ownerId: data.owner?.user?.id ?? null,
+    },
+  };
+}
+
+async function notionProfile(accessToken: string): Promise<OAuthAccountProfile> {
+  const response = await fetch("https://api.notion.com/v1/users/me", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Notion-Version": "2022-06-28",
+    },
+    cache: "no-store",
+  });
+  const data = (await response.json()) as {
+    id?: string;
+    name?: string | null;
+    person?: { email?: string };
+  };
+  if (!response.ok || !data.id) {
+    throw new Error(`Notion profile lookup failed (${response.status})`);
+  }
+  return {
+    email: data.person?.email ?? null,
+    name: data.name ?? "Notion workspace",
+    externalAccountId: data.id,
+  };
+}
+
 const LAUNCH_PROVIDERS: IntegrationProviderDefinition[] = [
+  defineApiKeyProvider({
+    id: "openai",
+    name: "OpenAI",
+    category: "ai",
+    description: "Connect OpenAI models to power Kairos workflows.",
+    featured: true,
+    permissions: ["Chat Completions", "Responses API", "Embeddings", "Image Generation"],
+    scopes: [],
+    kairosActions: [
+      { name: "chat_completions", description: "Run chat completions", examplePrompt: "Ask OpenAI to draft a response." },
+      { name: "responses_api", description: "Run Responses API requests", examplePrompt: "Use OpenAI Responses for this task." },
+      { name: "embeddings", description: "Create embeddings", examplePrompt: "Create an embedding for this document." },
+      { name: "image_generation", description: "Generate images", examplePrompt: "Generate a product image." },
+    ],
+    requiredEnv: ["OPENAI_API_KEY"],
+    isConfigured: () => Boolean(process.env.OPENAI_API_KEY?.trim()),
+    connect: async () => {
+      const response = await fetch(`${process.env.OPENAI_BASE_URL?.replace(/\/$/, "") || "https://api.openai.com/v1"}/models`, {
+        headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY!.trim()}` },
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(`OpenAI connection failed (${response.status})`);
+      return {
+        accountName: "OpenAI API",
+        externalAccountId: "openai-api",
+        permissions: ["Chat Completions", "Responses API", "Embeddings", "Image Generation"],
+        metadata: { connectionType: "api_key", verifiedAt: new Date().toISOString() },
+      };
+    },
+  }),
+  defineApiKeyProvider({
+    id: "anthropic",
+    name: "Anthropic",
+    category: "ai",
+    description: "Connect Claude models to power Kairos workflows.",
+    featured: true,
+    permissions: ["Claude API", "Messages API", "Tool Use", "Long Context"],
+    scopes: [],
+    kairosActions: [
+      { name: "claude_api", description: "Run Claude API requests", examplePrompt: "Ask Claude to analyze this." },
+      { name: "messages_api", description: "Run Messages API requests", examplePrompt: "Use the Messages API." },
+      { name: "tool_use", description: "Run Claude tool use", examplePrompt: "Let Claude call this tool." },
+      { name: "long_context", description: "Process long-context prompts", examplePrompt: "Analyze this long document with Claude." },
+    ],
+    requiredEnv: ["ANTHROPIC_API_KEY"],
+    isConfigured: () => Boolean(process.env.ANTHROPIC_API_KEY?.trim()),
+    connect: async () => {
+      const response = await fetch("https://api.anthropic.com/v1/models", {
+        headers: {
+          "x-api-key": process.env.ANTHROPIC_API_KEY!.trim(),
+          "anthropic-version": "2023-06-01",
+        },
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(`Anthropic connection failed (${response.status})`);
+      return {
+        accountName: "Anthropic API",
+        externalAccountId: "anthropic-api",
+        permissions: ["Claude API", "Messages API", "Tool Use", "Long Context"],
+        metadata: { connectionType: "api_key", verifiedAt: new Date().toISOString() },
+      };
+    },
+  }),
+  defineApiKeyProvider({
+    id: "vercel",
+    name: "Vercel",
+    category: "development",
+    description: "Manage deployments, domains, environments, and logs.",
+    featured: true,
+    permissions: ["Deployments", "Domains", "Environment Variables", "Logs"],
+    scopes: [],
+    kairosActions: [
+      { name: "deployments", description: "Manage deployments", examplePrompt: "Show recent Vercel deployments." },
+      { name: "domains", description: "Manage domains", examplePrompt: "List Vercel domains." },
+      { name: "environment_variables", description: "Manage environment variables", examplePrompt: "Show environment variables." },
+      { name: "logs", description: "Read deployment logs", examplePrompt: "Show the latest deployment logs." },
+    ],
+    requiredEnv: ["VERCEL_API_TOKEN"],
+    isConfigured: () => Boolean(process.env.VERCEL_API_TOKEN?.trim()),
+    connect: async () => {
+      const response = await fetch("https://api.vercel.com/v9/projects?limit=1", {
+        headers: { Authorization: `Bearer ${process.env.VERCEL_API_TOKEN!.trim()}` },
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(`Vercel connection failed (${response.status})`);
+      return {
+        accountName: "Vercel account",
+        externalAccountId: "vercel-api",
+        permissions: ["Deployments", "Domains", "Environment Variables", "Logs"],
+        metadata: { connectionType: "api_key", verifiedAt: new Date().toISOString() },
+      };
+    },
+  }),
+  defineApiKeyProvider({
+    id: "supabase",
+    name: "Supabase",
+    category: "development",
+    description: "Connect database, authentication, storage, and edge services.",
+    featured: true,
+    permissions: ["Database", "Authentication", "Storage", "Edge Functions"],
+    scopes: [],
+    kairosActions: [
+      { name: "database", description: "Access database resources", examplePrompt: "Inspect the Supabase database." },
+      { name: "authentication", description: "Manage authentication", examplePrompt: "Review Supabase auth users." },
+      { name: "storage", description: "Manage storage", examplePrompt: "List Supabase storage buckets." },
+      { name: "edge_functions", description: "Manage edge functions", examplePrompt: "List Supabase edge functions." },
+    ],
+    requiredEnv: ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"],
+    isConfigured: () =>
+      Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()),
+    connect: async () => {
+      const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!.replace(/\/$/, "");
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim();
+      const response = await fetch(`${baseUrl}/rest/v1/`, {
+        headers: { apikey: key, Authorization: `Bearer ${key}` },
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(`Supabase connection failed (${response.status})`);
+      return {
+        accountName: "Supabase project",
+        externalAccountId: new URL(baseUrl).hostname,
+        permissions: ["Database", "Authentication", "Storage", "Edge Functions"],
+        metadata: { connectionType: "api_key", verifiedAt: new Date().toISOString() },
+      };
+    },
+  }),
   defineGoogleProvider({
     id: "gmail",
     name: "Gmail",
@@ -430,7 +737,7 @@ const LAUNCH_PROVIDERS: IntegrationProviderDefinition[] = [
     clientIdEnv: "MICROSOFT_CLIENT_ID",
     clientSecretEnv: "MICROSOFT_CLIENT_SECRET",
   }),
-  defineStubProvider({
+  {
     id: "slack",
     name: "Slack",
     category: "communication",
@@ -450,11 +757,21 @@ const LAUNCH_PROVIDERS: IntegrationProviderDefinition[] = [
         examplePrompt: "Which Slack channels do we have?",
       },
     ],
-    authBaseUrl: "https://slack.com/oauth/v2/authorize",
-    tokenUrl: "https://slack.com/api/oauth.v2.access",
-    clientIdEnv: "SLACK_CLIENT_ID",
-    clientSecretEnv: "SLACK_CLIENT_SECRET",
-  }),
+    requiredEnv: ["SLACK_CLIENT_ID", "SLACK_CLIENT_SECRET"],
+    isConfigured: () => env("SLACK_CLIENT_ID", "SLACK_CLIENT_SECRET"),
+    buildAuthUrl: ({ redirectUri, state }) => {
+      const params = new URLSearchParams({
+        client_id: process.env.SLACK_CLIENT_ID!.trim(),
+        redirect_uri: redirectUri,
+        scope: "channels:read,chat:write,users:read",
+        state,
+      });
+      return `https://slack.com/oauth/v2/authorize?${params.toString()}`;
+    },
+    exchangeCode: slackExchange,
+    refreshAccessToken: ({ refreshToken }) => slackRefresh(refreshToken),
+    fetchProfile: ({ accessToken }) => slackProfile(accessToken),
+  },
   defineStubProvider({
     id: "discord",
     name: "Discord",
@@ -495,13 +812,13 @@ const LAUNCH_PROVIDERS: IntegrationProviderDefinition[] = [
     clientIdEnv: "ZOOM_CLIENT_ID",
     clientSecretEnv: "ZOOM_CLIENT_SECRET",
   }),
-  defineStubProvider({
+  {
     id: "notion",
     name: "Notion",
     category: "productivity",
     description: "Create pages and search your workspace notes.",
     featured: true,
-    permissions: ["Create pages", "Search notes"],
+    permissions: ["Read pages", "Read databases", "Create pages", "Update pages"],
     scopes: [],
     kairosActions: [
       {
@@ -515,11 +832,21 @@ const LAUNCH_PROVIDERS: IntegrationProviderDefinition[] = [
         examplePrompt: "Search Notion for onboarding notes.",
       },
     ],
-    authBaseUrl: "https://api.notion.com/v1/oauth/authorize",
-    tokenUrl: "https://api.notion.com/v1/oauth/token",
-    clientIdEnv: "NOTION_CLIENT_ID",
-    clientSecretEnv: "NOTION_CLIENT_SECRET",
-  }),
+    requiredEnv: ["NOTION_CLIENT_ID", "NOTION_CLIENT_SECRET"],
+    isConfigured: () => env("NOTION_CLIENT_ID", "NOTION_CLIENT_SECRET"),
+    buildAuthUrl: ({ redirectUri, state }) => {
+      const params = new URLSearchParams({
+        client_id: process.env.NOTION_CLIENT_ID!.trim(),
+        redirect_uri: redirectUri,
+        response_type: "code",
+        owner: "user",
+        state,
+      });
+      return `https://api.notion.com/v1/oauth/authorize?${params.toString()}`;
+    },
+    exchangeCode: notionExchange,
+    fetchProfile: ({ accessToken }) => notionProfile(accessToken),
+  },
   defineStubProvider({
     id: "trello",
     name: "Trello",

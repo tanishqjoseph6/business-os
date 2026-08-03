@@ -6,6 +6,10 @@
  */
 
 export type IntegrationProviderId =
+  | "openai"
+  | "anthropic"
+  | "vercel"
+  | "supabase"
   | "gmail"
   | "google-drive"
   | "google-calendar"
@@ -26,6 +30,7 @@ export type IntegrationProviderId =
   | "dropbox";
 
 export type IntegrationProviderCategory =
+  | "ai"
   | "google"
   | "microsoft"
   | "communication"
@@ -46,6 +51,7 @@ export type OAuthTokenSet = {
   expiresAt: string | null;
   scopes: string[];
   tokenType: string;
+  metadata?: Record<string, unknown>;
 };
 
 export type OAuthAccountProfile = {
@@ -81,6 +87,13 @@ export type IntegrationProviderDefinition = {
     accessToken: string;
   }) => Promise<OAuthAccountProfile>;
   isConfigured: () => boolean;
+  connectionType?: "oauth" | "api_key";
+  connect?: () => Promise<{
+    accountName: string;
+    externalAccountId: string;
+    permissions: string[];
+    metadata?: Record<string, unknown>;
+  }>;
 };
 
 const providers = new Map<string, IntegrationProviderDefinition>();

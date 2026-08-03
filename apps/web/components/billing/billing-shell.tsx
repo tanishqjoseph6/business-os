@@ -44,6 +44,7 @@ import {
   type PaymentMethod,
   type SubscriptionStatus,
 } from "../../lib/billing/mock-api";
+import { STORAGE_ADDONS } from "../../lib/pricing";
 
 export type BillingSection =
   | "overview"
@@ -184,7 +185,7 @@ function Payments({ methods, onAdd }: { methods: PaymentMethod[]; onAdd: () => v
 }
 
 function Addons({ onBuy }: { onBuy: (name: string) => void }) {
-  const storage = [{ name: "Storage · +25 GB", detail: "Additional storage", price: 9 }, { name: "Storage · +100 GB", detail: "Additional storage", price: 29 }, { name: "Storage · +250 GB", detail: "Additional storage", price: 59 }, { name: "Storage · +500 GB", detail: "Additional storage", price: 99 }, { name: "Storage · +1 TB", detail: "Additional storage", price: 179 }];
+  const storage = STORAGE_ADDONS.map((item) => ({ name: `Storage · ${item.label}`, detail: "Additional storage", price: item.monthlyPrice }));
   const addons = [...storage.map((item) => ({ ...item, icon: HardDrive })), { name: "Additional Workspace", detail: "$15 / month per Workspace", price: 15, icon: Layers3 }, { name: "Additional AI Agent", detail: "$5 / month per AI Agent", price: 5, icon: Sparkles }, { name: "Additional Audit Events", detail: "10,000 Audit Events", price: 19, icon: Activity }, { name: "Additional API Calls", detail: "100,000 API Calls", price: 29, icon: Zap }];
   return <div className="space-y-5"><SectionIntro eyebrow="Add-ons" title="Add capacity when you need it" body="Flexible monthly add-ons keep your plan predictable while your workspace grows." /><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{addons.map(({ name, detail, price, icon: Icon }) => <Card key={name} className="flex items-start gap-4"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Icon className="h-5 w-5" /></div><div className="min-w-0 flex-1"><h3 className="font-semibold">{name}</h3><p className="mt-1 text-sm text-secondary">{detail}</p><p className="mt-4 text-lg font-semibold">${price}<span className="ml-1 text-xs font-normal text-muted">/ month</span></p><Button size="sm" className="mt-4 w-full" onClick={() => onBuy(name)}>Add to checkout</Button></div></Card>)}</div></div>;
 }

@@ -8,6 +8,7 @@ import {
   disconnectIntegrationAccount,
   logIntegrationActivity,
   markIntegrationSynced,
+  upsertIntegrationAccount,
   updateIntegrationAccountSettings,
   updateIntegrationSyncJob,
 } from "@repo/database/integrations";
@@ -58,6 +59,42 @@ function fail(error: unknown): IntegrationActionResult<never> {
   };
 }
 
+async function ensureFreshIntegrationToken(input: {
+  accountId: string;
+  workspaceId: string;
+  userId: string;
+  providerId: string;
+}) {
+  const provider = getIntegrationProvider(input.providerId);
+  if (!provider?.refreshAccessToken) return;
+
+  const tokens = await getDecryptedIntegrationTokens({ accountId: input.accountId });
+  if (!tokens?.refreshToken || !tokens.expiresAt) return;
+
+  const refreshThreshold = Date.now() + 60_000;
+  if (new Date(tokens.expiresAt).getTime() > refreshThreshold) return;
+
+  const refreshed = await provider.refreshAccessToken({
+    refreshToken: tokens.refreshToken,
+  });
+  await upsertIntegrationTokens({
+    workspaceId: input.workspaceId,
+    accountId: input.accountId,
+    accessToken: refreshed.accessToken,
+    refreshToken: refreshed.refreshToken ?? tokens.refreshToken,
+    expiresAt: refreshed.expiresAt,
+    tokenType: refreshed.tokenType,
+  });
+  await logIntegrationActivity({
+    workspaceId: input.workspaceId,
+    accountId: input.accountId,
+    provider: input.providerId,
+    eventType: "token_refreshed",
+    title: `Refreshed ${input.providerId} access token`,
+    actorId: input.userId,
+  });
+}
+
 export async function listIntegrationsHub(
   input?: unknown,
 ): Promise<
@@ -95,6 +132,15 @@ export async function getIntegrationDetail(input: {
       provider: input.provider,
     });
     if (!detail) return { ok: false, error: "Integration not found" };
+    if (detail.account?.status === "connected") {
+      ensureIntegrationProvidersRegistered();
+      await ensureFreshIntegrationToken({
+        accountId: detail.account.id,
+        workspaceId: ctx.workspaceId,
+        userId: ctx.userId,
+        providerId: detail.account.provider,
+      });
+    }
     return { ok: true, data: detail };
   } catch (error) {
     return fail(error);
@@ -119,6 +165,39 @@ export async function startIntegrationOAuth(
         ok: false,
         error: `${provider.name} OAuth is not configured. Add ${provider.requiredEnv.join(" and ")}.`,
       };
+    }
+
+    if (provider.connectionType === "api_key" && provider.connect) {
+      try {
+        const connection = await provider.connect();
+        const account = await upsertIntegrationAccount({
+          workspaceId: ctx.workspaceId,
+          provider: provider.id,
+          userId: ctx.userId,
+          accountName: connection.accountName,
+          externalAccountId: connection.externalAccountId,
+          status: "connected",
+          permissions: connection.permissions,
+          metadata: connection.metadata,
+        });
+        await logIntegrationActivity({
+          workspaceId: ctx.workspaceId,
+          accountId: account.id,
+          provider: provider.id,
+          eventType: "connected",
+          title: `Connected ${provider.name}`,
+          body: "Server-side API key verified successfully.",
+          actorId: ctx.userId,
+          metadata: { connectionType: "api_key" },
+        });
+        return { ok: true, data: { authUrl: "", configured: true } };
+      } catch (error) {
+        return fail(
+          error instanceof Error
+            ? error
+            : new Error(`${provider.name} connection verification failed`),
+        );
+      }
     }
 
     const secret =
@@ -259,6 +338,14 @@ export async function manualSyncIntegration(
     if (account.status !== "connected") {
       return { ok: false, error: "Connect the integration before syncing" };
     }
+
+    ensureIntegrationProvidersRegistered();
+    await ensureFreshIntegrationToken({
+      accountId: account.id,
+      workspaceId: ctx.workspaceId,
+      userId: ctx.userId,
+      providerId: account.provider,
+    });
 
     const job = await createIntegrationSyncJob({
       workspaceId: ctx.workspaceId,

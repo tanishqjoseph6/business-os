@@ -57,12 +57,19 @@ export async function GET(request: Request) {
       provider: provider.id,
       userId: decoded.userId,
       accountEmail: profile.email,
-      accountName: profile.name,
-      externalAccountId: profile.externalAccountId,
+      accountName:
+        (typeof tokens.metadata?.workspaceName === "string"
+          ? tokens.metadata.workspaceName
+          : null) ?? profile.name,
+      externalAccountId:
+        (typeof tokens.metadata?.workspaceId === "string"
+          ? tokens.metadata.workspaceId
+          : null) ?? profile.externalAccountId,
       status: "connected",
       permissions: provider.permissions,
       scopes: tokens.scopes.length ? tokens.scopes : provider.scopes,
       health: "healthy",
+      metadata: tokens.metadata,
     });
 
     await upsertIntegrationTokens({

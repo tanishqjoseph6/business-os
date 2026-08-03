@@ -17,6 +17,57 @@ import {
 } from "./integration-status";
 import { IntegrationProviderLogo } from "./integration-logo";
 
+const INTEGRATION_COMPANIES: Record<string, string> = {
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  vercel: "Vercel",
+  supabase: "Supabase",
+  github: "GitHub, Inc.",
+  gmail: "Google",
+  "google-calendar": "Google",
+  "google-drive": "Google",
+  notion: "Notion Labs",
+  outlook: "Microsoft",
+  slack: "Salesforce",
+  stripe: "Stripe, Inc.",
+};
+
+const FEATURE_LABELS: Record<string, string> = {
+  read_emails: "Read Emails",
+  search_emails: "Search Emails",
+  send_email: "Send Emails",
+  create_meeting: "Create Events",
+  find_availability: "Find Availability",
+  upload_file: "Upload Files",
+  search_files: "Search Files",
+  create_folder: "Create Folders",
+  create_page: "Create Pages",
+  search_notes: "Search Notes",
+  send_message: "Send Messages",
+  read_channels: "Read Channels",
+  create_issue: "Create Issues",
+  create_pr: "Create Pull Requests",
+  read_repositories: "Read Repositories",
+  list_payments: "Read Payments",
+  view_customers: "View Customers",
+  chat_completions: "Chat Completions",
+  responses_api: "Responses API",
+  embeddings: "Embeddings",
+  image_generation: "Image Generation",
+  claude_api: "Claude API",
+  messages_api: "Messages API",
+  tool_use: "Tool Use",
+  long_context: "Long Context",
+  deployments: "Deployments",
+  domains: "Domains",
+  environment_variables: "Environment Variables",
+  logs: "Logs",
+  database: "Database",
+  authentication: "Authentication",
+  storage: "Storage",
+  edge_functions: "Edge Functions",
+};
+
 export function IntegrationCard({ card }: { card: IntegrationHubCard }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -31,7 +82,11 @@ export function IntegrationCard({ card }: { card: IntegrationHubCard }) {
         setError(result.error);
         return;
       }
-      window.location.href = result.data.authUrl;
+      if (result.data.authUrl) {
+        window.location.href = result.data.authUrl;
+        return;
+      }
+      router.refresh();
     });
   }
 
@@ -53,7 +108,7 @@ export function IntegrationCard({ card }: { card: IntegrationHubCard }) {
   return (
     <Card
       elevated
-      className="bos-float group flex h-full flex-col overflow-hidden transition duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-elevated"
+      className="bos-float group flex h-full flex-col overflow-hidden border-white/[0.08] transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_20px_55px_rgba(249,115,22,0.12)]"
     >
       <CardHeader className="mb-3">
         <div className="flex items-start justify-between gap-3">
@@ -61,12 +116,19 @@ export function IntegrationCard({ card }: { card: IntegrationHubCard }) {
             <IntegrationProviderLogo provider={card.id} name={card.name} />
             <div className="min-w-0">
               <CardTitle className="truncate">{card.name}</CardTitle>
-              <CardDescription className="mt-0.5">
-                {formatIntegrationCategory(card.category)}
-              </CardDescription>
+              <CardDescription className="mt-0.5">{INTEGRATION_COMPANIES[card.id] ?? "VanderBase partner"}</CardDescription>
             </div>
           </div>
           <IntegrationStatusBadge status={card.status} />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted">
+          <span className="rounded-full border border-border bg-elevated/60 px-2 py-1">
+            {formatIntegrationCategory(card.category)}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-success" : "bg-muted"}`} />
+            {connected ? "Connected" : "Not Connected"}
+          </span>
         </div>
       </CardHeader>
 
@@ -75,7 +137,7 @@ export function IntegrationCard({ card }: { card: IntegrationHubCard }) {
       </p>
 
       {error ? (
-        <p className="mb-3 text-xs text-error" role="alert">
+        <p className="mb-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary" role="status">
           {error}
         </p>
       ) : null}
@@ -111,13 +173,19 @@ export function IntegrationCard({ card }: { card: IntegrationHubCard }) {
         )}
       </div>
 
+      <div className="mb-4 flex flex-wrap gap-1.5">
+        {(card.account?.permissions ?? card.kairosActions.map((action) => action))
+          .slice(0, 3)
+          .map((feature) => (
+            <span key={feature} className="rounded-md border border-border/70 bg-white/[0.03] px-2 py-1 text-[10px] text-secondary">
+              {FEATURE_LABELS[feature] ?? feature.replaceAll("_", " ")}
+            </span>
+          ))}
+      </div>
+
       <div className="mt-auto flex items-center justify-between border-t border-border/60 pt-3 text-[11px] text-muted">
         <span>Last sync · {formatRelativeTime(card.lastSyncAt)}</span>
-        <span className="truncate pl-2">
-          {(card.account?.permissions ?? card.kairosActions)
-            .slice(0, 2)
-            .join(" · ") || "OAuth"}
-        </span>
+        <span className="truncate pl-2">{connected ? "Ready to automate" : "OAuth ready"}</span>
       </div>
     </Card>
   );
