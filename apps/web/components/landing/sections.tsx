@@ -490,7 +490,7 @@ export function PricingSection() {
                 }`}
               >
                 {value}
-                {value === "yearly" ? <span className="ml-1.5 text-success">Save 8%</span> : null}
+                {value === "yearly" ? <span className="ml-1.5 text-success">🎁 1 Month Free</span> : null}
               </button>
             ))}
           </div>
@@ -555,7 +555,7 @@ export function PricingSection() {
                     )}
                   </div>
                   <p className="mt-1 text-[11px] font-medium text-primary">
-                    {interval === "yearly" && plan.id !== "free" ? "1 month free" : plan.billingLabel}
+                    {interval === "yearly" && plan.id !== "free" ? "🎁 1 Month Free" : plan.billingLabel}
                   </p>
                 </div>
                 {plan.id === "business" ? (

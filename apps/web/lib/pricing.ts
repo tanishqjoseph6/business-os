@@ -1,16 +1,16 @@
-/** Shared production pricing configuration used by the landing and billing pages. */
+/** Shared pricing configuration for the landing, pricing, billing, and checkout surfaces. */
 export type PricingPlanId = "free" | "pro" | "business";
+export type PricingInterval = "monthly" | "yearly";
 
 export type PricingPlan = {
   id: PricingPlanId;
   name: string;
   description: string;
-  /** One-time price in USD. null = custom / contact sales. */
+  /** Kept for legacy checkout compatibility; subscription UI uses monthlyPrice. */
   price: number | null;
   monthlyPrice: number;
   yearlyPrice: number;
-  /** Billing cadence label shown in UI. */
-  billingLabel: "Free forever" | "One-time purchase" | "Custom pricing" | "Monthly or yearly";
+  billingLabel: "Free forever" | "Billed monthly" | "Monthly or yearly";
   credits: number | null;
   teamMembers: number | null;
   workspaces: number | null;
@@ -33,7 +33,7 @@ export type TeamSeatProduct = {
   id: "additional-seat";
   name: string;
   price: number;
-  billingLabel: "One-time purchase";
+  billingLabel: "Monthly add-on";
   description: string;
 };
 
@@ -45,8 +45,7 @@ export type StorageAddon = {
   popular?: boolean;
 };
 
-export const PRICING_TAGLINE =
-  "Simple, transparent pricing that scales with your business.";
+export const PRICING_TAGLINE = "Simple, transparent pricing that scales with your business.";
 
 export const PRICING_PLANS: PricingPlan[] = [
   {
@@ -61,6 +60,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     teamMembers: 3,
     workspaces: 1,
     features: [
+      "100 AI Credits included",
       "1 Workspace",
       "2 AI Agents",
       "250 Audit Events / month",
@@ -88,7 +88,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       "50K API Calls / month",
       "50 GB Storage",
     ],
-    cta: "Start Free Trial",
+    cta: "Upgrade to Pro",
     ctaHref: "/signup",
   },
   {
@@ -126,62 +126,19 @@ export const ADDITIONAL_TEAM_SEAT: TeamSeatProduct = {
   id: "additional-seat",
   name: "Additional Team Member",
   price: 25,
-  billingLabel: "One-time purchase",
-  description:
-    "Expand beyond your plan’s included seats. Each additional member is a one-time purchase.",
+  billingLabel: "Monthly add-on",
+  description: "Expand beyond your plan’s included seats.",
 };
 
 export const AI_CREDIT_PACKS: CreditPack[] = [
-  {
-    id: "credits-1k",
-    credits: 1_000,
-    price: 9,
-    label: "1,000 Credits",
-  },
-  {
-    id: "credits-5k",
-    credits: 5_000,
-    price: 29,
-    label: "5,000 Credits",
-    popular: true,
-  },
-  {
-    id: "credits-10k",
-    credits: 10_000,
-    price: 49,
-    label: "10,000 Credits",
-  },
-  {
-    id: "credits-25k",
-    credits: 25_000,
-    price: 99,
-    label: "25,000 Credits",
-  },
-  {
-    id: "credits-50k",
-    credits: 50_000,
-    price: 179,
-    label: "50,000 Credits",
-  },
-  {
-    id: "credits-100k",
-    credits: 100_000,
-    price: 299,
-    label: "100,000 Credits",
-  },
-  {
-    id: "credits-250k",
-    credits: 250_000,
-    price: 599,
-    label: "250,000 Credits",
-  },
-  {
-    id: "credits-500k",
-    credits: 500_000,
-    price: null,
-    label: "500,000 Credits",
-    contactSales: true,
-  },
+  { id: "credits-1k", credits: 1_000, price: 9, label: "1,000 Credits" },
+  { id: "credits-5k", credits: 5_000, price: 29, label: "5,000 Credits", popular: true },
+  { id: "credits-10k", credits: 10_000, price: 49, label: "10,000 Credits" },
+  { id: "credits-25k", credits: 25_000, price: 99, label: "25,000 Credits" },
+  { id: "credits-50k", credits: 50_000, price: 179, label: "50,000 Credits" },
+  { id: "credits-100k", credits: 100_000, price: 299, label: "100,000 Credits" },
+  { id: "credits-250k", credits: 250_000, price: 599, label: "250,000 Credits" },
+  { id: "credits-500k", credits: 500_000, price: null, label: "500,000 Credits", contactSales: true },
 ];
 
 export const COMPARISON_ROWS: string[][] = [
@@ -194,18 +151,15 @@ export const COMPARISON_ROWS: string[][] = [
   ["Storage", "5 GB", "50 GB", "250 GB"],
 ];
 
-export const CREDITS_USAGE_HINT =
-  "Shared across chat, inbox, content, agents, and automations. Buy more packs anytime—never a subscription.";
+export const CREDITS_USAGE_HINT = "AI credits are included with Free and available as flexible capacity.";
 
-export function formatPlanPrice(plan: PricingPlan): string {
-  if (plan.price === null) return "Custom";
-  if (plan.price === 0) return "$0";
-  return `$${plan.price}`;
+export function formatPlanPrice(plan: PricingPlan, interval: PricingInterval = "monthly"): string {
+  const amount = interval === "yearly" ? plan.yearlyPrice : plan.monthlyPrice;
+  return `$${amount.toLocaleString()}`;
 }
 
 export function formatPlanCredits(plan: PricingPlan): string {
-  if (plan.credits === null) return "Custom AI Credits";
-  return `${plan.credits.toLocaleString()} AI Credits included`;
+  return plan.credits === null ? "AI credits available as flexible capacity" : `${plan.credits.toLocaleString()} AI Credits included`;
 }
 
 export function formatCreditPackPrice(pack: CreditPack): string {

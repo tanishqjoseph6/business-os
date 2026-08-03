@@ -27,7 +27,7 @@ export function CreditsPurchasePage() {
             </Button>
           </Link>
           <Link href="/checkout?product=pro">
-            <Button size="sm">Buy Pro — $99</Button>
+            <Button size="sm">Upgrade to Pro — $59/month</Button>
           </Link>
         </div>
       </header>
@@ -41,7 +41,7 @@ export function CreditsPurchasePage() {
             Buy AI credits only when you need them.
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-secondary">
-            {PRICING_TAGLINE} Every pack is a one-time purchase—never a monthly allowance trap.
+            {PRICING_TAGLINE} Add flexible AI capacity whenever your workspace needs it.
           </p>
           <p className="mx-auto mt-3 max-w-xl text-sm text-muted">{CREDITS_USAGE_HINT}</p>
         </section>
@@ -65,7 +65,7 @@ export function CreditsPurchasePage() {
               <p className="mt-4 text-3xl font-semibold tracking-tight">
                 {formatCreditPackPrice(pack)}
               </p>
-              <p className="mt-1 text-xs font-medium text-primary">One-time purchase</p>
+              <p className="mt-1 text-xs font-medium text-primary">Flexible AI capacity</p>
               <ul className="mt-5 space-y-2 text-xs text-secondary">
                 <li className="flex gap-2">
                   <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
@@ -73,11 +73,11 @@ export function CreditsPurchasePage() {
                 </li>
                 <li className="flex gap-2">
                   <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                  Never expires as a subscription
+                  Available whenever your workspace needs it
                 </li>
                 <li className="flex gap-2">
                   <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                  Stripe & Razorpay one-time checkout
+                  Secure Stripe & Razorpay checkout
                 </li>
               </ul>
               {pack.contactSales ? (
@@ -105,13 +105,13 @@ export function CreditsPurchasePage() {
         <section className="mt-16 rounded-3xl border border-border bg-surface p-8 text-center sm:p-10">
           <h2 className="text-2xl font-semibold tracking-tight">Need Pro first?</h2>
           <p className="mx-auto mt-3 max-w-lg text-sm text-secondary">
-            Pro is a $99 one-time purchase and includes 1,000 AI credits, all Business OS modules, and
-            up to 10 team members.
+            Pro is $59/month and includes the full Pro plan, all Business OS modules, and up to 10 AI
+            agents.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link href="/checkout?product=pro">
               <Button className="gap-2">
-                Buy Pro — $99
+                Upgrade to Pro — $59/month
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </Button>
             </Link>

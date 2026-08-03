@@ -27,10 +27,9 @@ export function BillingClient() {
         >
           <CheckCircle2 className="mt-0.5 h-4 w-4 text-success" aria-hidden />
           <div>
-            <p className="font-medium text-foreground">One-time purchase completed</p>
+            <p className="font-medium text-foreground">Payment completed</p>
             <p className="mt-1 text-secondary">
-              Your entitlements will appear here once payment webhooks are connected. This was not a
-              subscription.
+              Your subscription entitlements will appear here when payment webhooks are connected.
             </p>
           </div>
         </div>
@@ -60,7 +59,7 @@ export function BillingClient() {
             {plan.id === "pro" ? (
               <Link href="/checkout?product=pro" className="mt-5 block">
                 <Button className="w-full" size="sm">
-                  Buy Pro once
+                  Upgrade to Pro
                 </Button>
               </Link>
             ) : plan.id === "business" ? (
@@ -91,7 +90,7 @@ export function BillingClient() {
             <p className="mt-1 text-sm text-secondary">{ADDITIONAL_TEAM_SEAT.description}</p>
             <p className="mt-2 text-xl font-semibold">
               ${ADDITIONAL_TEAM_SEAT.price}
-              <span className="ml-2 text-sm font-normal text-muted">per member · once</span>
+              <span className="ml-2 text-sm font-normal text-muted">per member / month</span>
             </p>
           </div>
           <Link href="/checkout?product=additional-seat">
@@ -121,7 +120,7 @@ export function BillingClient() {
             <Card key={pack.id} className="p-4">
               <p className="text-sm font-medium">{pack.label}</p>
               <p className="mt-2 text-xl font-semibold">{formatCreditPackPrice(pack)}</p>
-              <p className="text-[11px] text-muted">One-time</p>
+              <p className="text-[11px] text-muted">Flexible credit pack</p>
               {pack.contactSales ? (
                 <a href="mailto:sales@vanderbase.com" className="mt-4 block">
                   <Button variant="secondary" size="sm" className="w-full">

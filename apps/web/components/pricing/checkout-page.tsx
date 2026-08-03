@@ -108,7 +108,7 @@ export function CheckoutPage() {
 
         setSessionPreview(
           payload.message ??
-            `One-time ${provider} payment prepared for ${formatUsdFromCents(session.amountCents)}. Connect ${provider === "stripe" ? "STRIPE_SECRET_KEY" : "RAZORPAY_KEY_ID"} to redirect to live checkout.`,
+            `${provider} payment prepared for ${formatUsdFromCents(session.amountCents)}. Connect ${provider === "stripe" ? "STRIPE_SECRET_KEY" : "RAZORPAY_KEY_ID"} to redirect to live checkout.`,
         );
       } catch (checkoutError) {
         setError(
@@ -140,7 +140,7 @@ export function CheckoutPage() {
     <CheckoutShell>
       <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <Card className="p-6 sm:p-8">
-          <Badge variant="accent">One-time payment</Badge>
+          <Badge variant="accent">Secure payment</Badge>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight">{product.name}</h1>
           <p className="mt-2 text-sm leading-6 text-secondary">{product.description}</p>
           <p className="mt-2 text-xs text-muted">{PRICING_TAGLINE}</p>
@@ -216,7 +216,7 @@ export function CheckoutPage() {
               ) : (
                 <CreditCard className="h-4 w-4" aria-hidden />
               )}
-              Pay once with {provider === "stripe" ? "Stripe" : "Razorpay"}
+              Pay with {provider === "stripe" ? "Stripe" : "Razorpay"}
             </Button>
             <Button size="lg" variant="secondary" onClick={() => router.push("/pricing")}>
               <ArrowLeft className="h-4 w-4" aria-hidden />
@@ -229,7 +229,7 @@ export function CheckoutPage() {
           <p className="text-sm font-semibold">What you get</p>
           <ul className="mt-4 space-y-3 text-sm text-secondary">
             {[
-              "One-time charge only — never auto-renewed",
+              "Secure charge — billing follows your selected plan",
               "Workspace entitlements applied after payment",
               "Receipt and purchase history in Billing",
               "Secure Stripe or Razorpay checkout",
@@ -242,7 +242,7 @@ export function CheckoutPage() {
           </ul>
           <div className="mt-6 flex items-center gap-2 rounded-2xl border border-border bg-elevated/40 px-4 py-3 text-xs text-muted">
             <Shield className="h-4 w-4 text-primary" aria-hidden />
-            Checkout mode is locked to one-time payments (`payment`), not subscriptions.
+            Checkout is secured by your selected payment provider.
           </div>
         </Card>
       </div>
