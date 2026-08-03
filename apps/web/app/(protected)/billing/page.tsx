@@ -1,29 +1,20 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { ModulePageShell } from "../../../components/app/module-page-shell";
-import { BillingClient } from "../../../components/pricing/billing-client";
+import { BillingShell } from "../../../components/billing/billing-shell";
 
 export const metadata: Metadata = {
-  title: "Billing | VanderBase",
-  description: "Manage one-time VanderBase purchases, AI credits, and team seats.",
+  title: "Billing | KorClaw",
+  description: "Manage your KorClaw plan, usage, invoices, and payment methods.",
 };
 
 export default function BillingPage() {
   return (
     <ModulePageShell
       badge="Billing"
-      title="Billing & purchases"
-      description="Own VanderBase with a one-time purchase. Buy AI credits and seats only when you need them—never a subscription."
-      navItems={[
-        { href: "/settings", label: "General" },
-        { href: "/billing", label: "Billing" },
-        { href: "/credits", label: "AI Credits" },
-        { href: "/team", label: "Team" },
-      ]}
+      title="Billing & subscription"
+      description="Manage your plan, usage, invoices, and payment methods from one place."
     >
-      <Suspense fallback={<p className="text-sm text-secondary">Loading billing…</p>}>
-        <BillingClient />
-      </Suspense>
+      <BillingShell />
     </ModulePageShell>
   );
 }
