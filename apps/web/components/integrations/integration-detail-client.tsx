@@ -25,6 +25,7 @@ import {
 import { GmailIntegrationInbox } from "./gmail-integration-inbox";
 import { GmailSyncPanel } from "../inbox/gmail-sync-panel";
 import { GoogleCalendarPanel } from "./google-calendar-panel";
+import { GoogleDrivePanel } from "./google-drive-panel";
 
 const EVENT_LABEL: Record<string, string> = {
   connected: "Connected",
@@ -78,6 +79,8 @@ export function IntegrationDetailClient({
       ? "Connect Gmail"
       : catalog.id === "google-calendar"
         ? "Connect Google Calendar"
+        : catalog.id === "google-drive"
+          ? "Connect Google Drive"
       : catalog.id === "notion"
         ? "Connect Notion"
         : "Connect";
@@ -322,6 +325,7 @@ export function IntegrationDetailClient({
       {catalog.id === "google-calendar" && connected ? (
         <GoogleCalendarPanel />
       ) : null}
+      {catalog.id === "google-drive" && connected ? <GoogleDrivePanel /> : null}
     </div>
   );
 }

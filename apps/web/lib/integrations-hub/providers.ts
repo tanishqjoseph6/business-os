@@ -6,6 +6,13 @@ import {
   type OAuthAccountProfile,
   type OAuthTokenSet,
 } from "./provider";
+import {
+  buildGoogleOAuthUrl,
+  exchangeGoogleOAuthCode,
+  fetchGoogleOAuthProfile,
+  getGoogleOAuthCredentials,
+  refreshGoogleOAuthToken,
+} from "@repo/ai";
 
 function env(...keys: string[]): boolean {
   return keys.every((key) => Boolean(process.env[key]?.trim()));
@@ -21,85 +28,15 @@ async function googleExchange(input: {
   redirectUri: string;
   scopes: string[];
 }): Promise<OAuthTokenSet> {
-  const clientId = process.env.GOOGLE_CLIENT_ID!.trim();
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET!.trim();
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      code: input.code,
-      client_id: clientId,
-      client_secret: clientSecret,
-      redirect_uri: input.redirectUri,
-      grant_type: "authorization_code",
-    }),
-  });
-  if (!response.ok) {
-    throw new Error(`Google token exchange failed: ${await response.text()}`);
-  }
-  const data = (await response.json()) as {
-    access_token: string;
-    refresh_token?: string;
-    expires_in?: number;
-    token_type?: string;
-    scope?: string;
-  };
-  return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token ?? null,
-    expiresAt: expiresIn(data.expires_in),
-    scopes: data.scope?.split(" ") ?? input.scopes,
-    tokenType: data.token_type ?? "Bearer",
-  };
+  return exchangeGoogleOAuthCode(input);
 }
 
 async function googleRefresh(refreshToken: string): Promise<OAuthTokenSet> {
-  const clientId = process.env.GOOGLE_CLIENT_ID!.trim();
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET!.trim();
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      refresh_token: refreshToken,
-      client_id: clientId,
-      client_secret: clientSecret,
-      grant_type: "refresh_token",
-    }),
-  });
-  if (!response.ok) {
-    throw new Error(`Google token refresh failed: ${await response.text()}`);
-  }
-  const data = (await response.json()) as {
-    access_token: string;
-    expires_in?: number;
-    token_type?: string;
-    scope?: string;
-  };
-  return {
-    accessToken: data.access_token,
-    refreshToken,
-    expiresAt: expiresIn(data.expires_in),
-    scopes: data.scope?.split(" ") ?? [],
-    tokenType: data.token_type ?? "Bearer",
-  };
+  return refreshGoogleOAuthToken(refreshToken);
 }
 
 async function googleProfile(accessToken: string) {
-  const response = await fetch(
-    "https://www.googleapis.com/oauth2/v2/userinfo",
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
-  if (!response.ok) throw new Error("Failed to load Google profile");
-  const data = (await response.json()) as {
-    id: string;
-    email?: string;
-    name?: string;
-  };
-  return {
-    email: data.email ?? null,
-    name: data.name ?? null,
-    externalAccountId: data.id,
-  };
+  return fetchGoogleOAuthProfile(accessToken);
 }
 
 function googleAuthUrl(input: {
@@ -107,17 +44,7 @@ function googleAuthUrl(input: {
   state: string;
   scopes: string[];
 }): string {
-  const clientId = process.env.GOOGLE_CLIENT_ID!.trim();
-  const params = new URLSearchParams({
-    client_id: clientId,
-    redirect_uri: input.redirectUri,
-    response_type: "code",
-    scope: input.scopes.join(" "),
-    access_type: "offline",
-    prompt: "consent",
-    state: input.state,
-  });
-  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  return buildGoogleOAuthUrl(input);
 }
 
 function defineStubProvider(
@@ -270,7 +197,14 @@ function defineGoogleProvider(input: {
     scopes: input.scopes,
     kairosActions: input.kairosActions,
     requiredEnv: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
-    isConfigured: () => env("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"),
+    isConfigured: () => {
+      try {
+        getGoogleOAuthCredentials();
+        return true;
+      } catch {
+        return false;
+      }
+    },
     buildAuthUrl: ({ redirectUri, state }) =>
       googleAuthUrl({ redirectUri, state, scopes: input.scopes }),
     exchangeCode: ({ code, redirectUri }) =>

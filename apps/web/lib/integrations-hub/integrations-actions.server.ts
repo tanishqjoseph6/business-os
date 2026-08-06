@@ -307,7 +307,11 @@ export async function startIntegrationOAuth(
       return { ok: false, error: "OAuth state secret is not configured" };
     }
 
-    const redirectUri = getIntegrationOAuthRedirectUri(getSiteUrl());
+    const requestHeaders = await headers();
+    const forwardedProto = requestHeaders.get("x-forwarded-proto") ?? "http";
+    const host = requestHeaders.get("host");
+    const requestOrigin = host ? `${forwardedProto}://${host}` : getSiteUrl();
+    const redirectUri = getIntegrationOAuthRedirectUri(requestOrigin);
     const state = encodeIntegrationOAuthState({
       workspaceId: ctx.workspaceId,
       userId: ctx.userId,

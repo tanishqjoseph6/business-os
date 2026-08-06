@@ -14,23 +14,28 @@ import { getIntegrationOAuthRedirectUri } from "../../../../../lib/integrations-
 
 export const runtime = "nodejs";
 
-function redirectTo(path: string) {
-  return NextResponse.redirect(new URL(path, getSiteUrl()));
+function redirectTo(path: string, origin?: string) {
+  return NextResponse.redirect(new URL(path, origin ?? getSiteUrl()));
 }
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  const origin = url.origin;
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const oauthError = url.searchParams.get("error");
 
   if (oauthError) {
-    return redirectTo(`/integrations?error=${encodeURIComponent(oauthError)}`);
+    return redirectTo(
+      `/integrations?error=${encodeURIComponent(oauthError)}`,
+      origin,
+    );
   }
 
   if (!code || !state) {
     return redirectTo(
       `/integrations?error=${encodeURIComponent("Missing OAuth code or state")}`,
+      origin,
     );
   }
 
@@ -46,7 +51,7 @@ export async function GET(request: Request) {
     const provider = getIntegrationProvider(decoded.provider);
     if (!provider) throw new Error("Unknown provider");
 
-    const redirectUri = getIntegrationOAuthRedirectUri(getSiteUrl());
+    const redirectUri = getIntegrationOAuthRedirectUri(origin);
     const tokens = await provider.exchangeCode({ code, redirectUri });
     const profile = await provider.fetchProfile({
       accessToken: tokens.accessToken,
@@ -92,10 +97,13 @@ export async function GET(request: Request) {
       metadata: { scopes: account.scopes },
     });
 
-    return redirectTo(`/integrations/${provider.id}?connected=1`);
+    return redirectTo(`/integrations/${provider.id}?connected=1`, origin);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "OAuth callback failed";
-    return redirectTo(`/integrations?error=${encodeURIComponent(message)}`);
+    return redirectTo(
+      `/integrations?error=${encodeURIComponent(message)}`,
+      origin,
+    );
   }
 }

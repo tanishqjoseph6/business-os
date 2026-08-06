@@ -151,6 +151,8 @@ export function IntegrationCard({ card }: { card: IntegrationHubCard }) {
                 ? "Connect Gmail"
                 : card.id === "google-calendar"
                   ? "Connect Google Calendar"
+                  : card.id === "google-drive"
+                    ? "Connect Google Drive"
                 : "Connect"}
           </Button>
         ) : (
