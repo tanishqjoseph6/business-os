@@ -24,6 +24,8 @@
     "./inbox/*": "./src/inbox/*.ts",
     "./gmail": "./src/gmail/index.ts",
     "./gmail/*": "./src/gmail/*.ts",
+    "./google": "./src/google/oauth.ts",
+    "./google/*": "./src/google/*.ts",
     "./credits/*": "./src/credits/*.ts"
   },
   "scripts": {

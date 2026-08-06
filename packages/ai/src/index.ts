@@ -208,6 +208,18 @@ export type {
 } from "./inbox";
 
 export * from "./gmail";
+export {
+  buildGoogleOAuthUrl,
+  exchangeGoogleOAuthCode,
+  fetchGoogleOAuthProfile,
+  getGoogleOAuthCredentials,
+  getGoogleOAuthRedirectUri,
+  refreshGoogleOAuthToken,
+} from "./google/oauth";
+export type {
+  GoogleOAuthProfile,
+  GoogleOAuthTokenSet,
+} from "./google/oauth";
 
 export function getAiPackageName(): string {
   return "@repo/ai";

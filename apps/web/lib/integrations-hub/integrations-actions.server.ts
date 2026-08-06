@@ -1,5 +1,6 @@
 import "server-only";
 
+import { headers } from "next/headers";
 import { getUser } from "@repo/auth/server";
 import { getSiteUrl } from "@repo/auth/site-url";
 import {
@@ -31,6 +32,12 @@ import {
   describeGmailOAuthConfig,
   encodeOAuthState,
 } from "@repo/ai";
+import {
+  buildGoogleOAuthUrl,
+  getGoogleOAuthCredentials,
+  getGoogleOAuthRedirectUri,
+} from "@repo/ai";
+import { GOOGLE_CALENDAR_SCOPES } from "../google-calendar";
 import { getInboxAccountSecrets } from "@repo/database/gmail";
 import {
   disconnectGmailHubAccount,
@@ -206,6 +213,50 @@ export async function startIntegrationOAuth(
       });
 
       return { ok: true, data: { authUrl, configured: true } };
+    }
+
+    if (parsed.data.provider === "google-calendar") {
+      try {
+        getGoogleOAuthCredentials();
+      } catch (error) {
+        return {
+          ok: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Google Calendar OAuth is not configured",
+        };
+      }
+
+      const requestHeaders = await headers();
+      const forwardedProto = requestHeaders.get("x-forwarded-proto") ?? "http";
+      const host = requestHeaders.get("host");
+      const requestOrigin = host ? `${forwardedProto}://${host}` : undefined;
+      const redirectUri = getGoogleOAuthRedirectUri(
+        "/api/integrations/calendar/callback",
+        requestOrigin,
+      );
+      const state = encodeIntegrationOAuthState({
+        workspaceId: ctx.workspaceId,
+        userId: ctx.userId,
+        provider: "google-calendar",
+        secret:
+          process.env.INTEGRATION_OAUTH_STATE_SECRET?.trim() ||
+          process.env.GOOGLE_CLIENT_SECRET?.trim() ||
+          process.env.GMAIL_CLIENT_SECRET?.trim() ||
+          "",
+      });
+      return {
+        ok: true,
+        data: {
+          authUrl: buildGoogleOAuthUrl({
+            redirectUri,
+            state,
+            scopes: [...GOOGLE_CALENDAR_SCOPES],
+          }),
+          configured: true,
+        },
+      };
     }
 
     if (!provider.isConfigured()) {

@@ -149,6 +149,8 @@ export function IntegrationCard({ card }: { card: IntegrationHubCard }) {
               ? "Connect Notion"
               : card.id === "gmail"
                 ? "Connect Gmail"
+                : card.id === "google-calendar"
+                  ? "Connect Google Calendar"
                 : "Connect"}
           </Button>
         ) : (

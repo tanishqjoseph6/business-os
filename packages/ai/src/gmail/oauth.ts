@@ -1,5 +1,6 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { getGoogleOAuthCredentials } from "../google/oauth";
 
 const GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
@@ -30,18 +31,7 @@ export type GoogleUserInfo = {
 };
 
 function requireGoogleOAuthEnv() {
-  const clientId =
-    process.env.GMAIL_CLIENT_ID?.trim() ||
-    process.env.GOOGLE_CLIENT_ID?.trim();
-  const clientSecret =
-    process.env.GMAIL_CLIENT_SECRET?.trim() ||
-    process.env.GOOGLE_CLIENT_SECRET?.trim();
-  if (!clientId || !clientSecret) {
-    throw new Error(
-      "GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET (or GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET) are required for Gmail OAuth",
-    );
-  }
-  return { clientId, clientSecret };
+  return getGoogleOAuthCredentials();
 }
 
 /**

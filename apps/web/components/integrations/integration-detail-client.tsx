@@ -24,6 +24,7 @@ import {
 } from "./integration-status";
 import { GmailIntegrationInbox } from "./gmail-integration-inbox";
 import { GmailSyncPanel } from "../inbox/gmail-sync-panel";
+import { GoogleCalendarPanel } from "./google-calendar-panel";
 
 const EVENT_LABEL: Record<string, string> = {
   connected: "Connected",
@@ -75,6 +76,8 @@ export function IntegrationDetailClient({
   const connectLabel =
     catalog.id === "gmail"
       ? "Connect Gmail"
+      : catalog.id === "google-calendar"
+        ? "Connect Google Calendar"
       : catalog.id === "notion"
         ? "Connect Notion"
         : "Connect";
@@ -92,8 +95,8 @@ export function IntegrationDetailClient({
 
       {oauthError ? (
         <div className="bos-glass rounded-2xl border border-error/30 px-4 py-3 text-sm text-error">
-          Gmail connection failed: {oauthError}. Check your Google OAuth settings
-          and try again.
+          {catalog.name} connection failed: {oauthError}. Check your Google OAuth
+          settings and try again.
         </div>
       ) : null}
 
@@ -315,6 +318,9 @@ export function IntegrationDetailClient({
             connected={connected}
           />
         </div>
+      ) : null}
+      {catalog.id === "google-calendar" && connected ? (
+        <GoogleCalendarPanel />
       ) : null}
     </div>
   );
