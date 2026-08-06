@@ -1,5 +1,5 @@
-import { BrandLoadingScreen } from "../../../components/branding/brand-loading-screen";
+import { DashboardSkeleton } from "../../../components/dashboard/dashboard-skeleton";
 
 export default function DashboardLoading() {
-  return <BrandLoadingScreen label="Loading dashboard" className="min-h-[60vh]" />;
+  return <DashboardSkeleton />;
 }

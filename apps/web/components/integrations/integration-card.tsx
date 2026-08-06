@@ -13,6 +13,7 @@ import {
 import {
   formatIntegrationCategory,
   formatRelativeTime,
+  IntegrationAvailabilityBadge,
   IntegrationStatusBadge,
 } from "./integration-status";
 import { IntegrationProviderLogo } from "./integration-logo";
@@ -119,7 +120,13 @@ export function IntegrationCard({ card }: { card: IntegrationHubCard }) {
               <CardDescription className="mt-0.5">{INTEGRATION_COMPANIES[card.id] ?? "VanderBase partner"}</CardDescription>
             </div>
           </div>
-          <IntegrationStatusBadge status={card.status} />
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <IntegrationAvailabilityBadge
+              integrationId={card.id}
+              connectionStatus={card.status}
+            />
+            <IntegrationStatusBadge status={card.status} />
+          </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted">
           <span className="rounded-full border border-border bg-elevated/60 px-2 py-1">

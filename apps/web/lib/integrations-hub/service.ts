@@ -21,6 +21,7 @@ import {
   mapGmailInboxToIntegrationAccount,
 } from "./gmail-bridge";
 import { listInboxAccounts } from "@repo/database/inbox";
+import { isImplementedIntegrationId } from "../integrations";
 
 export { INTEGRATION_HUB_CATEGORIES } from "./categories";
 
@@ -138,8 +139,15 @@ export async function buildIntegrationHubCards(input: {
     );
   }
 
-  // Featured first, then alpha
+  // Available first, then actively connecting, then upcoming integrations.
   cards.sort((a, b) => {
+    const availabilityRank = (card: IntegrationHubCard) => {
+      if (!isImplementedIntegrationId(card.id)) return 2;
+      if (card.status === "syncing") return 1;
+      return 0;
+    };
+    const availabilityDelta = availabilityRank(a) - availabilityRank(b);
+    if (availabilityDelta !== 0) return availabilityDelta;
     if (a.featured !== b.featured) return a.featured ? -1 : 1;
     return a.name.localeCompare(b.name);
   });

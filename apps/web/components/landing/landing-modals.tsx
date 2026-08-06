@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Calculator, Calendar, Mail, Sparkles, X } from "lucide-react";
+import {
+  ArrowRight,
+  Calculator,
+  Calendar,
+  Check,
+  Mail,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@repo/ui/button";
 import {
@@ -113,15 +121,20 @@ export function LandingModals() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-2xl font-semibold">{overlay.payload.name}</h2>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                    overlay.payload.available
-                      ? "bg-primary/12 text-primary ring-1 ring-primary/25"
-                      : "bg-white/[0.04] text-secondary ring-1 ring-white/10"
-                  }`}
-                >
-                  {overlay.payload.available ? "Available" : "Coming Soon"}
-                </span>
+                {overlay.payload.available ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#22C55E] bg-[rgba(34,197,94,0.15)] px-2.5 py-1 text-[10px] font-semibold text-[#22C55E]">
+                    <span
+                      className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#22C55E] shadow-[0_0_8px_rgba(34,197,94,0.8)]"
+                      aria-hidden
+                    />
+                    <Check className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+                    Available
+                  </span>
+                ) : (
+                  <span className="rounded-full border border-primary bg-primary/15 px-2.5 py-1 text-[10px] font-semibold text-primary">
+                    Coming Soon
+                  </span>
+                )}
               </div>
               <p className="mt-1 text-sm text-secondary">{overlay.payload.description}</p>
             </div>
@@ -147,14 +160,14 @@ export function LandingModals() {
                   </li>
                 ))}
               </ul>
-              <Button
+                <Button
                 className="mt-6 gap-2"
                 onClick={() => {
                   closeOverlay();
                   openOverlay("waitlist");
                 }}
               >
-                Join the Waitlist
+                  Connect
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </Button>
             </>

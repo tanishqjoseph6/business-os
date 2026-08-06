@@ -1,13 +1,13 @@
 "use client";
 
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import { Plug, Search, Zap } from "lucide-react";
+import { Check, Plug, Search, Zap } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import {
   AVAILABLE_INTEGRATION_COUNT,
   filterIntegrations,
   INTEGRATION_FILTERS,
-  INTEGRATIONS,
+  IMPLEMENTED_INTEGRATIONS,
   type Integration,
   type IntegrationCategory,
 } from "../../lib/integrations";
@@ -16,7 +16,11 @@ import { IntegrationLogo } from "./integration-logos";
 import { useLandingInteractions } from "./landing-interactions";
 
 const STATUS_STATS = [
-  { label: "Integrations", value: INTEGRATIONS.length, suffix: "+" },
+  {
+    label: "Integrations Available",
+    value: IMPLEMENTED_INTEGRATIONS.length,
+    suffix: "",
+  },
   { label: "Available now", value: AVAILABLE_INTEGRATION_COUNT, suffix: "" },
   { label: "Avg sync", value: 2, suffix: "s", prefix: "<" },
   { label: "Uptime", value: 99.9, suffix: "%" },
@@ -25,7 +29,12 @@ const STATUS_STATS = [
 function IntegrationStatusBadge({ available }: { available: boolean }) {
   if (available) {
     return (
-      <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary ring-1 ring-primary/25">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#22C55E] bg-[rgba(34,197,94,0.15)] px-2.5 py-1 text-[10px] font-semibold tracking-wide text-[#22C55E]">
+        <span
+          className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#22C55E] shadow-[0_0_8px_rgba(34,197,94,0.8)]"
+          aria-hidden
+        />
+        <Check className="h-3 w-3" strokeWidth={2.5} aria-hidden />
         Available
       </span>
     );
@@ -128,7 +137,7 @@ function StatusBar() {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-50" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
           </span>
-          {AVAILABLE_INTEGRATION_COUNT} live today · {INTEGRATIONS.length}+ in the library
+          {AVAILABLE_INTEGRATION_COUNT} Integrations Available
         </div>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {STATUS_STATS.map((stat) => (
@@ -191,7 +200,7 @@ export function IntegrationsShowcase() {
             </div>
             <p className="flex items-center gap-2 text-xs text-secondary">
               <Zap className="h-3.5 w-3.5 text-primary" aria-hidden />
-              {filtered.length} of {INTEGRATIONS.length} shown
+              {filtered.length} of {IMPLEMENTED_INTEGRATIONS.length} shown
             </p>
           </div>
 
@@ -247,9 +256,7 @@ export function IntegrationsShowcase() {
           </Reveal>
         ) : (
           <Reveal delay={0.08} className="mt-10 text-center">
-            <p className="text-sm text-secondary">
-              More integrations are being added regularly.
-            </p>
+            <p className="text-sm text-secondary">More integrations coming soon</p>
           </Reveal>
         )}
       </div>

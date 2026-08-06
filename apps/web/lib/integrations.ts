@@ -19,6 +19,58 @@ export type Integration = {
   available: boolean;
 };
 
+/** Canonical list shared by the public landing page and Integrations hub. */
+export const IMPLEMENTED_INTEGRATIONS: Integration[] = [
+  {
+    id: "slack",
+    name: "Slack",
+    categories: ["communication"],
+    description: "Post messages and read channels.",
+    keywords: ["chat", "teams", "notifications"],
+    available: true,
+  },
+  {
+    id: "notion",
+    name: "Notion",
+    categories: ["productivity"],
+    description: "Create pages and search workspace notes.",
+    keywords: ["docs", "wiki", "knowledge"],
+    available: true,
+  },
+  {
+    id: "gmail",
+    name: "Gmail",
+    categories: ["communication"],
+    description: "Sync, search, and automate email.",
+    keywords: ["email", "inbox", "google"],
+    available: true,
+  },
+  {
+    id: "google-calendar",
+    name: "Google Calendar",
+    categories: ["scheduling"],
+    description: "Schedule meetings and find availability.",
+    keywords: ["calendar", "events", "google"],
+    available: true,
+  },
+  {
+    id: "google-drive",
+    name: "Google Drive",
+    categories: ["storage"],
+    description: "Browse and search workspace files.",
+    keywords: ["drive", "files", "docs", "google"],
+    available: true,
+  },
+];
+
+export const IMPLEMENTED_INTEGRATION_IDS = new Set(
+  IMPLEMENTED_INTEGRATIONS.map((integration) => integration.id),
+);
+
+export function isImplementedIntegrationId(id: string): boolean {
+  return IMPLEMENTED_INTEGRATION_IDS.has(id);
+}
+
 export function isIntegrationAvailable(integration: Integration): boolean {
   return integration.available;
 }
@@ -91,16 +143,14 @@ export const INTEGRATIONS: Integration[] = [
   { id: "woocommerce", name: "WooCommerce", categories: ["payments"], description: "WordPress Commerce", keywords: ["wordpress", "store"], available: false },
 ];
 
-export const AVAILABLE_INTEGRATION_COUNT = INTEGRATIONS.filter(
-  (integration) => integration.available,
-).length;
+export const AVAILABLE_INTEGRATION_COUNT = IMPLEMENTED_INTEGRATIONS.length;
 
 export function filterIntegrations(input: {
   query: string;
   category: IntegrationCategory | "all";
 }): Integration[] {
   const q = input.query.trim().toLowerCase();
-  return INTEGRATIONS.filter((integration) => {
+  return IMPLEMENTED_INTEGRATIONS.filter((integration) => {
     const categoryMatch =
       input.category === "all" || integration.categories.includes(input.category);
     if (!categoryMatch) return false;
