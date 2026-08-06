@@ -1,0 +1,200 @@
+:root {
+  --vb-cursor-orange: #ff6a00;
+  --vb-cursor-orange-soft: color-mix(in srgb, #ff6a00 42%, transparent);
+  --vb-cursor-orange-glow: color-mix(in srgb, #ff6a00 55%, transparent);
+}
+
+html.vb-custom-cursor,
+html.vb-custom-cursor * {
+  cursor: none !important;
+}
+
+.vb-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2147483000;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: normal;
+  will-change: transform, opacity;
+  contain: layout style;
+}
+
+.vb-cursor.is-visible {
+  opacity: 1;
+}
+
+.vb-cursor__arrow {
+  position: absolute;
+  top: -2px;
+  left: -3px;
+  width: 22px;
+  height: 22px;
+  transform-origin: 3px 2px;
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1), filter 180ms ease, opacity 140ms ease;
+  filter: drop-shadow(0 0 4px var(--vb-cursor-orange-soft));
+}
+
+.vb-cursor__arrow svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+  overflow: visible;
+}
+
+.vb-cursor.is-hover .vb-cursor__arrow {
+  transform: scale(1.18);
+  filter: drop-shadow(0 0 8px var(--vb-cursor-orange-glow));
+}
+
+.vb-cursor.is-magnetic .vb-cursor__arrow {
+  transform: scale(1.28);
+  filter: drop-shadow(0 0 12px var(--vb-cursor-orange-glow));
+}
+
+.vb-cursor.is-link .vb-cursor__arrow,
+.vb-cursor.is-text .vb-cursor__arrow,
+.vb-cursor.is-ai .vb-cursor__arrow {
+  opacity: 0;
+  transform: scale(0.45);
+}
+
+.vb-cursor__ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--vb-cursor-orange) 70%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--vb-cursor-orange) 16%, transparent) inset,
+    0 0 18px var(--vb-cursor-orange-soft);
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity 160ms ease,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vb-cursor.is-link .vb-cursor__ring {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.vb-cursor__ibeam {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 22px;
+  margin: -11px 0 0 -1px;
+  border-radius: 9999px;
+  background: var(--vb-cursor-orange);
+  box-shadow:
+    0 0 8px var(--vb-cursor-orange-glow),
+    0 -8px 0 -5px var(--vb-cursor-orange),
+    0 8px 0 -5px var(--vb-cursor-orange);
+  opacity: 0;
+  transform: scaleY(0.6);
+  transition:
+    opacity 140ms ease,
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vb-cursor.is-text .vb-cursor__ibeam {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.vb-cursor__orb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 9999px;
+  opacity: 0;
+  transform: scale(0.4);
+  background:
+    radial-gradient(circle at 35% 30%, #ffd4a8 0%, #ff8a2b 28%, #ff6a00 62%, #1a0d05 100%);
+  box-shadow:
+    0 0 10px var(--vb-cursor-orange-glow),
+    0 0 24px color-mix(in srgb, #ff6a00 35%, transparent);
+  transition:
+    opacity 180ms ease,
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vb-cursor__orb::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  border: 1px solid color-mix(in srgb, var(--vb-cursor-orange) 45%, transparent);
+  animation: vb-cursor-orb-pulse 1.6s ease-in-out infinite;
+}
+
+.vb-cursor.is-ai .vb-cursor__orb {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.vb-cursor__ripple {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--vb-cursor-orange);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.vb-cursor.is-click .vb-cursor__ripple {
+  animation: vb-cursor-ripple 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes vb-cursor-ripple {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.45);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(3.2);
+  }
+}
+
+@keyframes vb-cursor-orb-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vb-cursor__arrow,
+  .vb-cursor__ring,
+  .vb-cursor__ibeam,
+  .vb-cursor__orb {
+    transition: none;
+  }
+
+  .vb-cursor__orb::after,
+  .vb-cursor.is-click .vb-cursor__ripple {
+    animation: none;
+  }
+}

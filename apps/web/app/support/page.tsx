@@ -34,7 +34,7 @@ const supportPaths = [
     title: "Report issue",
     body: "Share security, permission, or reliability concerns with the team.",
     icon: MessageSquareWarning,
-    href: "mailto:support@vanderbase.com",
+    href: "mailto:hello@vanderbase.com",
   },
 ];
 

@@ -145,7 +145,7 @@ export function IntegrationCard({ card }: { card: IntegrationHubCard }) {
       <div className="mb-4 flex flex-wrap gap-2">
         {!connected ? (
           <Button size="sm" loading={pending} onClick={connect}>
-            Connect
+            {card.id === "notion" ? "Connect Notion" : "Connect"}
           </Button>
         ) : (
           <>

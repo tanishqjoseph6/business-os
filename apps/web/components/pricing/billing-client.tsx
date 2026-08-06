@@ -63,7 +63,7 @@ export function BillingClient() {
                 </Button>
               </Link>
             ) : plan.id === "business" ? (
-              <a href="mailto:sales@vanderbase.com" className="mt-5 block">
+              <a href="mailto:hello@vanderbase.com" className="mt-5 block">
                 <Button variant="secondary" className="w-full" size="sm">
                   Contact sales
                 </Button>
@@ -122,7 +122,7 @@ export function BillingClient() {
               <p className="mt-2 text-xl font-semibold">{formatCreditPackPrice(pack)}</p>
               <p className="text-[11px] text-muted">Flexible credit pack</p>
               {pack.contactSales ? (
-                <a href="mailto:sales@vanderbase.com" className="mt-4 block">
+                <a href="mailto:hello@vanderbase.com" className="mt-4 block">
                   <Button variant="secondary" size="sm" className="w-full">
                     Contact sales
                   </Button>

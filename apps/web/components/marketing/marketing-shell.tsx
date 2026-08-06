@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { InstagramSocialLink } from "../branding/instagram-social-link";
 import { VanderBaseLogo } from "../branding/vanderbase-logo";
 
 export function MarketingShell({
@@ -41,7 +42,8 @@ export function MarketingShell({
             <VanderBaseLogo size="sm" />
             <p>© {new Date().getFullYear()} VanderBase. All rights reserved.</p>
           </div>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <InstagramSocialLink className="inline-flex items-center transition hover:text-foreground" />
             <Link href="/terms" className="hover:text-foreground">
               Terms
             </Link>

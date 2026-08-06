@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { InstagramSocialLink } from "../../components/branding/instagram-social-link";
 import { MarketingShell } from "../../components/marketing/marketing-shell";
 import { ContactForm } from "../../components/marketing/contact-form";
 
@@ -23,16 +24,11 @@ export default function ContactPage() {
             </a>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Sales</p>
-            <a href="mailto:sales@vanderbase.com" className="mt-2 block text-foreground hover:text-primary">
-              sales@vanderbase.com
-            </a>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Privacy</p>
-            <a href="mailto:privacy@vanderbase.com" className="mt-2 block text-foreground hover:text-primary">
-              privacy@vanderbase.com
-            </a>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Social</p>
+            <InstagramSocialLink
+              showHandle
+              className="mt-2 inline-flex items-center gap-2 text-foreground hover:text-primary"
+            />
           </div>
           <p className="pt-2 text-xs leading-5 text-muted">
             Prefer joining early access? Visit the homepage and join the VanderBase waitlist.

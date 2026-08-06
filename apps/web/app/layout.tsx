@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import { VanderBaseCursor } from "../components/cursor/vanderbase-cursor";
+import { VANDERBASE_SOCIAL_PROFILES } from "../lib/social";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -82,18 +84,28 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "VanderBase",
-    applicationCategory: "BusinessApplication",
-    operatingSystem: "Web",
-    description: "The AI-native Business OS for modern businesses.",
-    brand: {
-      "@type": "Brand",
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
       name: "VanderBase",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description: "The AI-native Business OS for modern businesses.",
+      brand: {
+        "@type": "Brand",
+        name: "VanderBase",
+      },
     },
-  };
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "VanderBase",
+      url: "https://vanderbase.com",
+      email: "hello@vanderbase.com",
+      sameAs: [...VANDERBASE_SOCIAL_PROFILES],
+    },
+  ];
 
   return (
     <html lang="en" className={`dark ${GeistSans.variable} ${GeistMono.variable}`}>
@@ -104,6 +116,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
+        <VanderBaseCursor />
         {children}
       </body>
     </html>

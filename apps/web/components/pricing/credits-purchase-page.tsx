@@ -81,7 +81,7 @@ export function CreditsPurchasePage() {
                 </li>
               </ul>
               {pack.contactSales ? (
-                <a href="mailto:sales@vanderbase.com" className="mt-6">
+                <a href="mailto:hello@vanderbase.com" className="mt-6">
                   <Button variant="secondary" className="w-full">
                     Contact sales
                     <ArrowRight className="h-3.5 w-3.5" aria-hidden />

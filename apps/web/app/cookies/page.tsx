@@ -40,8 +40,8 @@ export default function CookiesPage() {
         <LegalSection title="5. Contact">
           <p>
             Questions:{" "}
-            <a href="mailto:privacy@vanderbase.com" className="text-primary hover:underline">
-              privacy@vanderbase.com
+            <a href="mailto:hello@vanderbase.com" className="text-primary hover:underline">
+              hello@vanderbase.com
             </a>
             .
           </p>

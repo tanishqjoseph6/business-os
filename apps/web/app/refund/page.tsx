@@ -44,8 +44,8 @@ export default function RefundPage() {
         <LegalSection title="5. Contact">
           <p>
             Billing questions:{" "}
-            <a href="mailto:billing@vanderbase.com" className="text-primary hover:underline">
-              billing@vanderbase.com
+            <a href="mailto:hello@vanderbase.com" className="text-primary hover:underline">
+              hello@vanderbase.com
             </a>{" "}
             or{" "}
             <a href="/contact" className="text-primary hover:underline">

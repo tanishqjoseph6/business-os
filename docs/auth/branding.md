@@ -13,7 +13,7 @@ First-party VanderBase auth requires **in-app UI** (this repo) plus **Google Clo
 | Homepage | `https://vanderbase.com` |
 | Privacy | `https://vanderbase.com/privacy` |
 | Terms | `https://vanderbase.com/terms` |
-| Support | `support@vanderbase.com` |
+| Support | `hello@vanderbase.com` |
 | Logo (wordmark) | `apps/web/public/branding/vanderbase-wordmark.png` |
 | Logo (icon / consent) | `apps/web/public/branding/vanderbase-icon-512.png` |
 | OG image | `apps/web/public/branding/vanderbase-og.png` (1200×630) |
@@ -24,11 +24,11 @@ This controls the **Google account picker / consent UI**. It must say **VanderBa
 
 1. Open [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → **OAuth consent screen**.
 2. **App name:** `VanderBase`
-3. **User support email:** `support@vanderbase.com` (or your verified workspace inbox)
+3. **User support email:** `hello@vanderbase.com` (or your verified workspace inbox)
 4. **App logo:** upload `vanderbase-icon-512.png` (square PNG, under 1 MB)
 5. **Application home page:** `https://vanderbase.com`
 6. **Authorized domains:** `vanderbase.com` (and your auth callback host if shown)
-7. **Developer contact:** `support@vanderbase.com`
+7. **Developer contact:** `hello@vanderbase.com`
 8. **Privacy policy:** `https://vanderbase.com/privacy`
 9. **Terms of service:** `https://vanderbase.com/terms`
 10. Save. Publish / submit for verification if the app is in production / external users.

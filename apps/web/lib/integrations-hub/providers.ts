@@ -375,6 +375,8 @@ async function slackProfile(accessToken: string): Promise<OAuthAccountProfile> {
 async function notionExchange(input: { code: string; redirectUri: string }): Promise<OAuthTokenSet> {
   const clientId = process.env.NOTION_CLIENT_ID!.trim();
   const clientSecret = process.env.NOTION_CLIENT_SECRET!.trim();
+  const redirectUri =
+    process.env.NOTION_REDIRECT_URI?.trim() || input.redirectUri;
   const response = await fetch("https://api.notion.com/v1/oauth/token", {
     method: "POST",
     headers: {
@@ -385,7 +387,7 @@ async function notionExchange(input: { code: string; redirectUri: string }): Pro
     body: JSON.stringify({
       grant_type: "authorization_code",
       code: input.code,
-      redirect_uri: input.redirectUri,
+      redirect_uri: redirectUri,
     }),
   });
   const data = (await response.json()) as {
@@ -832,12 +834,15 @@ const LAUNCH_PROVIDERS: IntegrationProviderDefinition[] = [
         examplePrompt: "Search Notion for onboarding notes.",
       },
     ],
-    requiredEnv: ["NOTION_CLIENT_ID", "NOTION_CLIENT_SECRET"],
-    isConfigured: () => env("NOTION_CLIENT_ID", "NOTION_CLIENT_SECRET"),
+    requiredEnv: ["NOTION_CLIENT_ID", "NOTION_CLIENT_SECRET", "NOTION_REDIRECT_URI"],
+    isConfigured: () =>
+      env("NOTION_CLIENT_ID", "NOTION_CLIENT_SECRET", "NOTION_REDIRECT_URI"),
     buildAuthUrl: ({ redirectUri, state }) => {
+      const configuredRedirectUri =
+        process.env.NOTION_REDIRECT_URI?.trim() || redirectUri;
       const params = new URLSearchParams({
         client_id: process.env.NOTION_CLIENT_ID!.trim(),
-        redirect_uri: redirectUri,
+        redirect_uri: configuredRedirectUri,
         response_type: "code",
         owner: "user",
         state,

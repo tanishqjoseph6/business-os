@@ -73,8 +73,8 @@ export default function TermsPage() {
         <LegalSection title="9. Contact">
           <p>
             Questions about these terms:{" "}
-            <a href="mailto:legal@vanderbase.com" className="text-primary hover:underline">
-              legal@vanderbase.com
+            <a href="mailto:hello@vanderbase.com" className="text-primary hover:underline">
+              hello@vanderbase.com
             </a>{" "}
             or visit our{" "}
             <a href="/contact" className="text-primary hover:underline">

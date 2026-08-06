@@ -32,6 +32,7 @@ import { WaitlistSocialProof } from "../waitlist/waitlist-social-proof";
 import { useWaitlistStats } from "../waitlist/use-waitlist-stats";
 import { IntegrationsShowcase } from "./integrations-showcase";
 import { ProductMockup } from "./product-mockup";
+import { InstagramSocialLink } from "../branding/instagram-social-link";
 import { VanderBaseLogo } from "../branding/vanderbase-logo";
 
 const features = [
@@ -559,7 +560,7 @@ export function PricingSection() {
                   </p>
                 </div>
                 {plan.id === "business" ? (
-                  <Link href="mailto:sales@vanderbase.com" className="mt-5 block">
+                  <Link href="mailto:hello@vanderbase.com" className="mt-5 block">
                     <Button variant="secondary" className="w-full">
                       Contact Sales
                     </Button>
@@ -796,6 +797,9 @@ export function LandingFooter() {
           <p className="mt-4 max-w-sm text-sm leading-6 text-secondary">
             The AI-native operating system for founders, operators, and modern teams.
           </p>
+          <div className="mt-5">
+            <InstagramSocialLink className="inline-flex items-center text-secondary transition hover:text-foreground" />
+          </div>
         </div>
         {columns.map((column) => (
           <div key={column.title}>

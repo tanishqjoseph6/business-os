@@ -17,8 +17,8 @@ export default function PrivacyPage() {
           <p>
             VanderBase (“we”, “us”) operates the VanderBase web application and related services. For
             privacy inquiries contact{" "}
-            <a href="mailto:privacy@vanderbase.com" className="text-primary hover:underline">
-              privacy@vanderbase.com
+            <a href="mailto:hello@vanderbase.com" className="text-primary hover:underline">
+              hello@vanderbase.com
             </a>
             .
           </p>

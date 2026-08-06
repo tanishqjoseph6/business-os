@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     return Response.json(
       {
         ok: false,
-        error: "This product requires contacting sales@vanderbase.com",
+        error: "This product requires contacting hello@vanderbase.com",
         contactSales: true,
       },
       { status: 400 },

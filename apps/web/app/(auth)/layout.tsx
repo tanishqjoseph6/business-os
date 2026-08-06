@@ -87,7 +87,7 @@ export default function AuthLayout({
             </Link>
             {" · "}
             <a
-              href="mailto:support@vanderbase.com"
+              href="mailto:hello@vanderbase.com"
               className="transition hover:text-foreground"
             >
               Support
