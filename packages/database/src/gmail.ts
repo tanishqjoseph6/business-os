@@ -15,6 +15,10 @@ import type {
 import { createServerClient } from "./server";
 import { createAdminClient } from "./admin";
 import {
+  decryptIntegrationSecret,
+  encryptIntegrationSecret,
+} from "./token-encryption";
+import {
   listInboxAccounts,
   parseEmailThreadSummary,
   parseParticipants,
@@ -110,6 +114,20 @@ export async function getGmailSyncProgress(input: {
   };
 }
 
+function decryptStoredToken(stored: string | null): string | null {
+  if (!stored) return null;
+  if (stored.startsWith("vb1.")) {
+    return decryptIntegrationSecret(stored);
+  }
+  return stored;
+}
+
+function encryptStoredToken(plaintext: string | null): string | null {
+  if (!plaintext) return null;
+  if (plaintext.startsWith("vb1.")) return plaintext;
+  return encryptIntegrationSecret(plaintext);
+}
+
 function mapSecrets(row: AccountRow): InboxAccountSecrets {
   return {
     id: row.id,
@@ -117,8 +135,8 @@ function mapSecrets(row: AccountRow): InboxAccountSecrets {
     provider: row.provider,
     email: row.email,
     displayName: row.display_name,
-    accessToken: row.access_token,
-    refreshToken: row.refresh_token,
+    accessToken: decryptStoredToken(row.access_token),
+    refreshToken: decryptStoredToken(row.refresh_token),
     tokenExpiresAt: row.token_expires_at,
     scopes: row.scopes,
     status: row.status,
@@ -222,7 +240,9 @@ export async function upsertGmailAccountTokens(input: {
   // Reconnect after partial sync: keep refresh token if Google omits it,
   // preserve history cursor + metadata, clear stuck syncing/error state.
   const refreshToken =
-    input.refreshToken ?? existing?.refresh_token ?? null;
+    input.refreshToken ??
+    decryptStoredToken(existing?.refresh_token ?? null) ??
+    null;
   const existingMetadata = metadataToRecord(existing?.metadata ?? {});
   const priorProgress = parseGmailSyncProgress(existingMetadata);
   if (priorProgress && priorProgress.status === "running") {
@@ -245,8 +265,8 @@ export async function upsertGmailAccountTokens(input: {
         provider: "gmail",
         email: input.email,
         display_name: input.displayName ?? existing?.display_name ?? null,
-        access_token: input.accessToken,
-        refresh_token: refreshToken,
+        access_token: encryptStoredToken(input.accessToken),
+        refresh_token: encryptStoredToken(refreshToken),
         token_expires_at: input.tokenExpiresAt,
         scopes: input.scopes.length ? input.scopes : (existing?.scopes ?? []),
         status: "connected",
@@ -287,13 +307,13 @@ export async function updateGmailAccountTokens(input: {
 }): Promise<void> {
   const supabase = input.client ?? createAdminClient();
   const patch: Database["public"]["Tables"]["inbox_accounts"]["Update"] = {
-    access_token: input.accessToken,
+    access_token: encryptStoredToken(input.accessToken),
     token_expires_at: input.tokenExpiresAt,
     status: "connected",
     sync_error: null,
   };
   if (input.refreshToken !== undefined) {
-    patch.refresh_token = input.refreshToken;
+    patch.refresh_token = encryptStoredToken(input.refreshToken);
   }
   if (input.scopes) patch.scopes = input.scopes;
 

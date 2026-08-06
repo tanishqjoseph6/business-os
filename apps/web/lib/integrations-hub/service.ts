@@ -16,6 +16,11 @@ import type {
   IntegrationHubCategory,
 } from "@repo/types";
 import { getLaunchProviders } from "./providers";
+import {
+  getWorkspaceGmailHubAccount,
+  mapGmailInboxToIntegrationAccount,
+} from "./gmail-bridge";
+import { listInboxAccounts } from "@repo/database/inbox";
 
 export { INTEGRATION_HUB_CATEGORIES } from "./categories";
 
@@ -59,11 +64,12 @@ export async function buildIntegrationHubCards(input: {
   connectedCount: number;
   accounts: IntegrationAccount[];
 }> {
-  const [catalog, accounts] = await Promise.all([
+  const [catalog, accounts, inboxAccounts] = await Promise.all([
     loadIntegrationCatalog(),
     listWorkspaceIntegrationAccounts({ workspaceId: input.workspaceId }).catch(
       () => [] as IntegrationAccount[],
     ),
+    listInboxAccounts({ workspaceId: input.workspaceId }).catch(() => []),
   ]);
 
   const accountByProvider = new Map<string, IntegrationAccount>();
@@ -75,6 +81,29 @@ export async function buildIntegrationHubCards(input: {
   }
 
   let cards: IntegrationHubCard[] = catalog.map((item) => {
+    if (item.id === "gmail") {
+      const inboxGmail =
+        inboxAccounts.find(
+          (account) =>
+            account.provider === "gmail" && account.status !== "disconnected",
+        ) ?? inboxAccounts.find((account) => account.provider === "gmail");
+      if (inboxGmail) {
+        const mapped = mapGmailInboxToIntegrationAccount(inboxGmail);
+        return {
+          ...item,
+          account: mapped.status === "not_connected" ? null : mapped,
+          status: mapped.status,
+          lastSyncAt: mapped.lastSyncAt ?? null,
+        };
+      }
+      return {
+        ...item,
+        account: null,
+        status: "not_connected" as IntegrationConnectionStatus,
+        lastSyncAt: null,
+      };
+    }
+
     const account = accountByProvider.get(item.id) ?? null;
     const rawStatus: IntegrationConnectionStatus =
       account?.status ?? "not_connected";
@@ -115,9 +144,9 @@ export async function buildIntegrationHubCards(input: {
     return a.name.localeCompare(b.name);
   });
 
-  const connectedCount = accounts.filter(
-    (account) => account.status === "connected",
-  ).length;
+  const connectedCount =
+    cards.filter((card) => card.status === "connected" || card.status === "syncing")
+      .length;
 
   return { cards, connectedCount, accounts };
 }
@@ -140,6 +169,18 @@ export async function loadIntegrationDetail(input: {
     catalog = FALLBACK_CATALOG.find((item) => item.id === input.provider) ?? null;
   }
   if (!catalog) return null;
+
+  if (input.provider === "gmail") {
+    const gmailAccount = await getWorkspaceGmailHubAccount({
+      workspaceId: input.workspaceId,
+    });
+    const activity = await listIntegrationActivity({
+      workspaceId: input.workspaceId,
+      provider: "gmail",
+      limit: 30,
+    }).catch(() => [] as IntegrationActivity[]);
+    return { catalog, account: gmailAccount, activity };
+  }
 
   const accounts = await listWorkspaceIntegrationAccounts({
     workspaceId: input.workspaceId,

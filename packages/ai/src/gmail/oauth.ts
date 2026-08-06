@@ -30,11 +30,15 @@ export type GoogleUserInfo = {
 };
 
 function requireGoogleOAuthEnv() {
-  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  const clientId =
+    process.env.GMAIL_CLIENT_ID?.trim() ||
+    process.env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret =
+    process.env.GMAIL_CLIENT_SECRET?.trim() ||
+    process.env.GOOGLE_CLIENT_SECRET?.trim();
   if (!clientId || !clientSecret) {
     throw new Error(
-      "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required for Gmail OAuth",
+      "GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET (or GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET) are required for Gmail OAuth",
     );
   }
   return { clientId, clientSecret };
@@ -49,10 +53,13 @@ function requireGoogleOAuthEnv() {
  * this value character-for-character.
  */
 export function getGmailOAuthRedirectUri(siteUrl?: string): string {
+  const configured = process.env.GMAIL_REDIRECT_URI?.trim();
+  if (configured) return configured;
+
   const raw = (siteUrl ?? process.env.NEXT_PUBLIC_SITE_URL)?.trim();
   if (!raw) {
     throw new Error(
-      "NEXT_PUBLIC_SITE_URL is required for Gmail OAuth redirect URI",
+      "GMAIL_REDIRECT_URI or NEXT_PUBLIC_SITE_URL is required for Gmail OAuth redirect URI",
     );
   }
 
@@ -83,8 +90,14 @@ export function describeGmailOAuthConfig(siteUrl?: string): {
   const redirectUri = getGmailOAuthRedirectUri(siteUrl);
   return {
     redirectUri,
-    clientIdSet: Boolean(process.env.GOOGLE_CLIENT_ID?.trim()),
-    clientSecretSet: Boolean(process.env.GOOGLE_CLIENT_SECRET?.trim()),
+    clientIdSet: Boolean(
+      process.env.GMAIL_CLIENT_ID?.trim() ||
+        process.env.GOOGLE_CLIENT_ID?.trim(),
+    ),
+    clientSecretSet: Boolean(
+      process.env.GMAIL_CLIENT_SECRET?.trim() ||
+        process.env.GOOGLE_CLIENT_SECRET?.trim(),
+    ),
     siteUrl: site,
     scopes: [...GMAIL_SCOPES],
     googleCloudMustAllow: redirectUri,
@@ -231,6 +244,7 @@ export function encodeOAuthState(input: {
   userId: string;
   provider: "gmail";
   displayName?: string | null;
+  returnTo?: string | null;
 }): string {
   const payload = {
     ...input,
@@ -248,6 +262,7 @@ export function decodeOAuthState(state: string): {
   userId: string;
   provider: "gmail";
   displayName?: string | null;
+  returnTo?: string | null;
 } {
   const [encoded, signature] = state.split(".");
   if (!encoded || !signature || !verifyOAuthState(encoded, signature)) {
@@ -258,6 +273,7 @@ export function decodeOAuthState(state: string): {
     userId?: string;
     provider?: string;
     displayName?: string | null;
+    returnTo?: string | null;
     expiresAt?: number;
   };
   if (
@@ -274,11 +290,14 @@ export function decodeOAuthState(state: string): {
     userId: parsed.userId,
     provider: "gmail",
     displayName: parsed.displayName,
+    returnTo: parsed.returnTo,
   };
 }
 
 function oauthStateSecret(): string {
-  const secret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  const secret =
+    process.env.GMAIL_CLIENT_SECRET?.trim() ||
+    process.env.GOOGLE_CLIENT_SECRET?.trim();
   if (!secret) throw new Error("OAuth state secret is not configured");
   return secret;
 }

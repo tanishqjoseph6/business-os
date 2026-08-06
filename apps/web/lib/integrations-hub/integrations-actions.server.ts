@@ -26,6 +26,20 @@ import {
 } from "@repo/types";
 import type { IntegrationActionResult } from "./integrations-action-types";
 import { resolveActiveWorkspace } from "../workspace-context";
+import {
+  buildGmailAuthUrl,
+  describeGmailOAuthConfig,
+  encodeOAuthState,
+} from "@repo/ai";
+import { getInboxAccountSecrets } from "@repo/database/gmail";
+import {
+  disconnectGmailHubAccount,
+  getGmailHubAccountById,
+} from "./gmail-bridge";
+import {
+  ensureFreshGmailAccess,
+  startGmailSyncInBackground,
+} from "../gmail-sync";
 import { encodeIntegrationOAuthState } from "./oauth-state.server";
 import { getIntegrationProvider } from "./provider";
 import { ensureIntegrationProvidersRegistered } from "./providers";
@@ -134,12 +148,22 @@ export async function getIntegrationDetail(input: {
     if (!detail) return { ok: false, error: "Integration not found" };
     if (detail.account?.status === "connected") {
       ensureIntegrationProvidersRegistered();
-      await ensureFreshIntegrationToken({
-        accountId: detail.account.id,
-        workspaceId: ctx.workspaceId,
-        userId: ctx.userId,
-        providerId: detail.account.provider,
-      });
+      if (detail.account.provider === "gmail") {
+        const secrets = await getInboxAccountSecrets({
+          workspaceId: ctx.workspaceId,
+          accountId: detail.account.id,
+        }).catch(() => null);
+        if (secrets) {
+          await ensureFreshGmailAccess(secrets).catch(() => undefined);
+        }
+      } else {
+        await ensureFreshIntegrationToken({
+          accountId: detail.account.id,
+          workspaceId: ctx.workspaceId,
+          userId: ctx.userId,
+          providerId: detail.account.provider,
+        });
+      }
     }
     return { ok: true, data: detail };
   } catch (error) {
@@ -159,6 +183,30 @@ export async function startIntegrationOAuth(
     ensureIntegrationProvidersRegistered();
     const provider = getIntegrationProvider(parsed.data.provider);
     if (!provider) return { ok: false, error: "Unknown integration provider" };
+
+    if (parsed.data.provider === "gmail") {
+      const oauthConfig = describeGmailOAuthConfig(getSiteUrl());
+      if (!oauthConfig.clientIdSet || !oauthConfig.clientSecretSet) {
+        return {
+          ok: false,
+          error:
+            "Gmail OAuth is not configured. Add GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET (or GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).",
+        };
+      }
+
+      const state = encodeOAuthState({
+        workspaceId: ctx.workspaceId,
+        userId: ctx.userId,
+        provider: "gmail",
+        returnTo: `/integrations/gmail?connected=1`,
+      });
+      const authUrl = buildGmailAuthUrl({
+        redirectUri: oauthConfig.redirectUri,
+        state,
+      });
+
+      return { ok: true, data: { authUrl, configured: true } };
+    }
 
     if (!provider.isConfigured()) {
       return {
@@ -237,6 +285,27 @@ export async function disconnectIntegration(
     if (!parsed.success) {
       return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
     }
+
+    const gmailAccount = await getGmailHubAccountById({
+      workspaceId: ctx.workspaceId,
+      accountId: parsed.data.accountId,
+    });
+    if (gmailAccount) {
+      await disconnectGmailHubAccount({
+        workspaceId: ctx.workspaceId,
+        accountId: gmailAccount.id,
+      });
+      await logIntegrationActivity({
+        workspaceId: ctx.workspaceId,
+        provider: "gmail",
+        eventType: "disconnected",
+        title: "Disconnected Gmail",
+        body: gmailAccount.accountEmail,
+        actorId: ctx.userId,
+      });
+      return { ok: true, data: { disconnected: true } };
+    }
+
     const account = await requireIntegrationAccount({
       workspaceId: ctx.workspaceId,
       accountId: parsed.data.accountId,
@@ -331,6 +400,41 @@ export async function manualSyncIntegration(
     if (!parsed.success) {
       return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
     }
+
+    const gmailAccount = await getGmailHubAccountById({
+      workspaceId: ctx.workspaceId,
+      accountId: parsed.data.accountId,
+    });
+    if (gmailAccount) {
+      if (gmailAccount.status !== "connected" && gmailAccount.status !== "syncing") {
+        return { ok: false, error: "Connect Gmail before syncing" };
+      }
+      const secrets = await getInboxAccountSecrets({
+        workspaceId: ctx.workspaceId,
+        accountId: gmailAccount.id,
+      });
+      if (!secrets) {
+        return { ok: false, error: "Gmail account tokens not found" };
+      }
+      await ensureFreshGmailAccess(secrets);
+      const started = await startGmailSyncInBackground({
+        workspaceId: ctx.workspaceId,
+        userId: ctx.userId,
+        accountId: gmailAccount.id,
+        full: true,
+      });
+      await logIntegrationActivity({
+        workspaceId: ctx.workspaceId,
+        provider: "gmail",
+        eventType: "manual_sync",
+        title: "Gmail inbox sync started",
+        body: gmailAccount.accountEmail,
+        actorId: ctx.userId,
+        metadata: { jobId: started.jobId },
+      });
+      return { ok: true, data: { jobId: started.jobId } };
+    }
+
     const account = await requireIntegrationAccount({
       workspaceId: ctx.workspaceId,
       accountId: parsed.data.accountId,

@@ -8,16 +8,45 @@ import {
   getGmailProfile,
 } from "@repo/ai";
 import { upsertGmailAccountTokens } from "@repo/database/gmail";
+import { logIntegrationActivity } from "@repo/database/integrations";
 import { createAdminClient } from "@repo/database/admin";
 import { getPublicSupabaseEnv } from "@repo/database/env";
 import { getUser } from "@repo/auth/server";
 import { getSiteUrl } from "@repo/auth/site-url";
 import { getMembershipRole } from "@repo/database/workspace";
+import { startGmailSyncInBackground } from "../../../../../lib/gmail-sync";
 
 export const runtime = "nodejs";
 
+function resolveOAuthDestination(input: {
+  siteUrl: string;
+  returnTo?: string | null;
+  connected?: boolean;
+  oauthError?: string | null;
+  email?: string | null;
+}): URL {
+  const fallback = new URL("/integrations/gmail", input.siteUrl);
+  const raw = input.returnTo?.trim();
+  const destination =
+    raw && raw.startsWith("/")
+      ? new URL(raw, input.siteUrl)
+      : fallback;
+
+  if (input.oauthError) {
+    destination.searchParams.set("oauth", "error");
+    destination.searchParams.set("error", input.oauthError);
+  } else if (input.connected) {
+    destination.searchParams.set("connected", "1");
+    if (input.email) destination.searchParams.set("email", input.email);
+  } else if (!raw) {
+    destination.searchParams.set("oauth", "missing");
+  }
+
+  return destination;
+}
+
 /**
- * Google OAuth callback — exchanges code, stores tokens, redirects to accounts.
+ * Google OAuth callback — exchanges code, stores tokens, redirects to integrations.
  *
  * Critical: refreshed Supabase session cookies must be attached to the
  * redirect response. Middleware may refresh the session on NextResponse.next(),
@@ -30,9 +59,9 @@ export async function GET(request: NextRequest) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const oauthError = url.searchParams.get("error");
+  const oauthErrorDescription = url.searchParams.get("error_description");
 
   const siteUrl = getSiteUrl(request.nextUrl.origin);
-  const accountsUrl = new URL("/inbox/accounts", siteUrl);
 
   console.info("[gmail.oauth] callback hit", {
     hasCode: Boolean(code),
@@ -42,29 +71,47 @@ export async function GET(request: NextRequest) {
   });
 
   if (oauthError) {
-    accountsUrl.searchParams.set("oauth", "error");
-    return redirectWithSession(request, accountsUrl);
+    const destination = resolveOAuthDestination({
+      siteUrl,
+      oauthError: oauthErrorDescription ?? oauthError,
+    });
+    return redirectWithSession(request, destination);
   }
 
   if (!code || !state) {
-    accountsUrl.searchParams.set("oauth", "missing");
-    return redirectWithSession(request, accountsUrl);
+    return redirectWithSession(
+      request,
+      resolveOAuthDestination({ siteUrl }),
+    );
   }
 
   try {
     const decoded = decodeOAuthState(state);
     if (decoded.provider !== "gmail") {
-      accountsUrl.searchParams.set("oauth", "unsupported");
-      return redirectWithSession(request, accountsUrl);
+      return redirectWithSession(
+        request,
+        resolveOAuthDestination({
+          siteUrl,
+          returnTo: decoded.returnTo,
+          oauthError: "unsupported_provider",
+        }),
+      );
     }
+
     const sessionUser = await getUser();
     if (
       !sessionUser ||
       sessionUser.id !== decoded.userId ||
       !(await getMembershipRole(decoded.workspaceId, sessionUser.id))
     ) {
-      accountsUrl.searchParams.set("oauth", "error");
-      return redirectWithSession(request, accountsUrl);
+      return redirectWithSession(
+        request,
+        resolveOAuthDestination({
+          siteUrl,
+          returnTo: decoded.returnTo,
+          oauthError: "session_mismatch",
+        }),
+      );
     }
 
     const redirectUri = getGmailOAuthRedirectUri(siteUrl);
@@ -117,15 +164,49 @@ export async function GET(request: NextRequest) {
       historyId: account.historyId,
     });
 
-    accountsUrl.searchParams.set("oauth", "connected");
-    accountsUrl.searchParams.set("email", userInfo.email);
-    return redirectWithSession(request, accountsUrl);
+    await logIntegrationActivity({
+      workspaceId: decoded.workspaceId,
+      provider: "gmail",
+      eventType: "connected",
+      title: "Connected Gmail",
+      body: userInfo.email,
+      actorId: decoded.userId,
+      metadata: { accountId: account.id },
+    }).catch(() => undefined);
+
+    try {
+      await startGmailSyncInBackground({
+        workspaceId: decoded.workspaceId,
+        userId: decoded.userId,
+        accountId: account.id,
+        full: true,
+      });
+    } catch (syncError) {
+      console.warn("[gmail.oauth] post-connect sync failed to start", {
+        error:
+          syncError instanceof Error ? syncError.message : String(syncError),
+      });
+    }
+
+    const destination = resolveOAuthDestination({
+      siteUrl,
+      returnTo: decoded.returnTo ?? "/integrations/gmail?connected=1",
+      connected: true,
+      email: userInfo.email,
+    });
+
+    return redirectWithSession(request, destination);
   } catch (err) {
     console.error("[gmail.oauth] callback failed", {
       error: err instanceof Error ? err.message : "oauth_failed",
     });
-    accountsUrl.searchParams.set("oauth", "error");
-    return redirectWithSession(request, accountsUrl);
+    return redirectWithSession(
+      request,
+      resolveOAuthDestination({
+        siteUrl,
+        oauthError: err instanceof Error ? err.message : "oauth_failed",
+      }),
+    );
   }
 }
 

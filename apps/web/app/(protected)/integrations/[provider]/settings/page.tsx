@@ -24,6 +24,9 @@ export default async function IntegrationSettingsPage({
     provider,
   });
   if (!detail) notFound();
+  if (provider === "gmail") {
+    redirect(`/integrations/gmail`);
+  }
   if (!detail.account || detail.account.status === "disconnected") {
     redirect(`/integrations/${provider}`);
   }

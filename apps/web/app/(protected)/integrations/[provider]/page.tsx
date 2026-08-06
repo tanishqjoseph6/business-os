@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { listInboxThreads } from "@repo/database/inbox";
 import { IntegrationDetailClient } from "../../../../components/integrations/integration-detail-client";
 import { IntegrationsShell } from "../../../../components/integrations/integrations-shell";
 import { ensureIntegrationProvidersRegistered } from "../../../../lib/integrations-hub/providers";
@@ -37,6 +38,23 @@ export default async function IntegrationDetailPage({
   });
   if (!detail) notFound();
 
+  const searchQuery = typeof query.q === "string" ? query.q : undefined;
+  const oauthError =
+    typeof query.error === "string"
+      ? query.error
+      : query.oauth === "error"
+        ? "OAuth authorization failed"
+        : null;
+
+  const gmailThreads =
+    provider === "gmail" && detail.account
+      ? await listInboxThreads({
+          workspaceId: context.active.workspace.id,
+          accountId: detail.account.id,
+          query: searchQuery,
+        }).catch(() => [])
+      : [];
+
   return (
     <IntegrationsShell
       badge={detail.catalog.name}
@@ -48,6 +66,8 @@ export default async function IntegrationDetailPage({
         account={detail.account}
         activity={detail.activity}
         justConnected={query.connected === "1"}
+        gmailThreads={gmailThreads}
+        oauthError={oauthError}
       />
     </IntegrationsShell>
   );

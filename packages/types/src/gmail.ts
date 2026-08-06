@@ -119,6 +119,13 @@ export type GmailSyncResult = {
 export const startGmailOAuthSchema = z.object({
   // Optional prefill; email comes from Google userinfo after consent.
   displayName: z.string().trim().max(160).optional().nullable(),
+  /** Post-OAuth redirect path (must start with `/`). Defaults to inbox accounts. */
+  returnTo: z
+    .string()
+    .trim()
+    .regex(/^\/[^\s]*$/, "returnTo must be a relative path")
+    .optional()
+    .nullable(),
 });
 
 export const gmailSyncSchema = z.object({

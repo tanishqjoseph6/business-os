@@ -100,7 +100,7 @@ export async function startGmailOAuthAction(
       return {
         ok: false,
         error:
-          "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in apps/web/.env.local",
+          "Gmail OAuth is not configured. Add GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET (or GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET) to apps/web/.env.local.",
       };
     }
 
@@ -109,6 +109,7 @@ export async function startGmailOAuthAction(
       userId: ctx.userId,
       provider: "gmail",
       displayName: parsed.data.displayName,
+      returnTo: parsed.data.returnTo ?? "/inbox/accounts",
     });
     const authUrl = buildGmailAuthUrl({
       redirectUri,

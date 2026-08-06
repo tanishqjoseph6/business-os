@@ -145,7 +145,11 @@ export function IntegrationCard({ card }: { card: IntegrationHubCard }) {
       <div className="mb-4 flex flex-wrap gap-2">
         {!connected ? (
           <Button size="sm" loading={pending} onClick={connect}>
-            {card.id === "notion" ? "Connect Notion" : "Connect"}
+            {card.id === "notion"
+              ? "Connect Notion"
+              : card.id === "gmail"
+                ? "Connect Gmail"
+                : "Connect"}
           </Button>
         ) : (
           <>
@@ -155,12 +159,21 @@ export function IntegrationCard({ card }: { card: IntegrationHubCard }) {
             >
               Open
             </Link>
-            <Link
-              href={`/integrations/${card.id}/settings`}
-              className="inline-flex h-8 items-center rounded-xl px-3 text-xs text-secondary transition hover:bg-elevated hover:text-foreground"
-            >
-              Configure
-            </Link>
+            {card.id === "gmail" ? (
+              <Link
+                href="/inbox"
+                className="inline-flex h-8 items-center rounded-xl px-3 text-xs text-secondary transition hover:bg-elevated hover:text-foreground"
+              >
+                Inbox
+              </Link>
+            ) : (
+              <Link
+                href={`/integrations/${card.id}/settings`}
+                className="inline-flex h-8 items-center rounded-xl px-3 text-xs text-secondary transition hover:bg-elevated hover:text-foreground"
+              >
+                Configure
+              </Link>
+            )}
             <Button
               size="sm"
               variant="danger"

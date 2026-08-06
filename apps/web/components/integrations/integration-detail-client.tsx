@@ -7,6 +7,7 @@ import type {
   IntegrationAccount,
   IntegrationActivity,
   IntegrationCatalogItem,
+  InboxThread,
 } from "@repo/types";
 import { Button } from "@repo/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@repo/ui/card";
@@ -21,6 +22,8 @@ import {
   formatRelativeTime,
   IntegrationStatusBadge,
 } from "./integration-status";
+import { GmailIntegrationInbox } from "./gmail-integration-inbox";
+import { GmailSyncPanel } from "../inbox/gmail-sync-panel";
 
 const EVENT_LABEL: Record<string, string> = {
   connected: "Connected",
@@ -38,11 +41,15 @@ export function IntegrationDetailClient({
   account,
   activity,
   justConnected,
+  gmailThreads = [],
+  oauthError,
 }: {
   catalog: IntegrationCatalogItem;
   account: IntegrationAccount | null;
   activity: IntegrationActivity[];
   justConnected?: boolean;
+  gmailThreads?: InboxThread[];
+  oauthError?: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -65,12 +72,28 @@ export function IntegrationDetailClient({
     });
   }
 
+  const connectLabel =
+    catalog.id === "gmail"
+      ? "Connect Gmail"
+      : catalog.id === "notion"
+        ? "Connect Notion"
+        : "Connect";
+
   return (
     <div className="space-y-5">
       {justConnected ? (
         <div className="bos-glass rounded-2xl border border-success/30 px-4 py-3 text-sm text-success">
-          {catalog.name} connected successfully. Kairos can use it when AI access
-          is enabled.
+          {catalog.name} connected successfully.
+          {catalog.id === "gmail"
+            ? " Inbox metadata sync started — latest emails appear below."
+            : " Kairos can use it when AI access is enabled."}
+        </div>
+      ) : null}
+
+      {oauthError ? (
+        <div className="bos-glass rounded-2xl border border-error/30 px-4 py-3 text-sm text-error">
+          Gmail connection failed: {oauthError}. Check your Google OAuth settings
+          and try again.
         </div>
       ) : null}
 
@@ -159,7 +182,7 @@ export function IntegrationDetailClient({
                   })
                 }
               >
-                Connect
+                {connectLabel}
               </Button>
             ) : (
               <>
@@ -194,12 +217,21 @@ export function IntegrationDetailClient({
                 >
                   Manual Sync
                 </Button>
-                <Link
-                  href={`/integrations/${catalog.id}/settings`}
-                  className="inline-flex h-10 items-center rounded-xl border border-border bg-elevated px-4 text-sm"
-                >
-                  Sync Settings
-                </Link>
+                {catalog.id === "gmail" ? (
+                  <Link
+                    href="/inbox"
+                    className="inline-flex h-10 items-center rounded-xl border border-border bg-elevated px-4 text-sm"
+                  >
+                    Open Inbox
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/integrations/${catalog.id}/settings`}
+                    className="inline-flex h-10 items-center rounded-xl border border-border bg-elevated px-4 text-sm"
+                  >
+                    Sync Settings
+                  </Link>
+                )}
                 <Button
                   variant="danger"
                   loading={pending}
@@ -271,6 +303,19 @@ export function IntegrationDetailClient({
           </Card>
         </div>
       </div>
+
+      {catalog.id === "gmail" ? (
+        <div className="space-y-5">
+          {account ? (
+            <GmailSyncPanel accountId={account.id} />
+          ) : null}
+          <GmailIntegrationInbox
+            threads={gmailThreads}
+            accountEmail={account?.accountEmail ?? null}
+            connected={connected}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
