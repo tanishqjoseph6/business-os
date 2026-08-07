@@ -190,6 +190,28 @@ class LemonSqueezyPaymentProvider implements PaymentProvider {
   }
 
   private async request(path: string, method: "GET" | "POST" | "PATCH" | "DELETE", body?: unknown) {
+    const requestBody = body as
+      | {
+          data?: {
+            relationships?: {
+              store?: { data?: { id?: string } };
+              variant?: { data?: { id?: string } };
+            };
+          };
+        }
+      | undefined;
+    const storeId =
+      requestBody?.data?.relationships?.store?.data?.id ?? this.config.storeId;
+    const variantId = requestBody?.data?.relationships?.variant?.data?.id;
+
+    console.info("[payments] Lemon Squeezy API request", {
+      method,
+      path,
+      storeId,
+      variantId,
+      payload: body ?? null,
+    });
+
     const response = await fetch(`${this.apiUrl}${path}`, {
       method,
       headers: {
@@ -200,10 +222,28 @@ class LemonSqueezyPaymentProvider implements PaymentProvider {
       body: body ? JSON.stringify(body) : undefined,
       cache: "no-store",
     });
-    if (!response.ok) {
-      const detail = await response.text();
-      throw new Error(`Lemon Squeezy request failed (${response.status}): ${detail.slice(0, 300)}`);
+    const responseBody = await response.text();
+    let parsedBody: unknown = responseBody;
+    try {
+      parsedBody = responseBody ? JSON.parse(responseBody) : null;
+    } catch {
+      // Preserve non-JSON response bodies in the log.
     }
-    return (await response.json()) as { data?: any };
+
+    console.info("[payments] Lemon Squeezy API response", {
+      method,
+      path,
+      storeId,
+      variantId,
+      statusCode: response.status,
+      responseBody: parsedBody,
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Lemon Squeezy request failed (${response.status}): ${responseBody.slice(0, 300)}`,
+      );
+    }
+    return (parsedBody ?? {}) as { data?: any };
   }
 }

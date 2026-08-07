@@ -91,6 +91,17 @@ export async function POST(request: Request) {
       checkout,
     });
   } catch (error) {
+    console.error("[payments] Checkout creation failed", {
+      error:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
+          : error,
+      product: parsed.data.product ?? parsed.data.pack ?? null,
+    });
     return Response.json(
       { ok: false, error: error instanceof Error ? error.message : "Checkout failed" },
       { status: 500 },
