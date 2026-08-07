@@ -33,6 +33,7 @@ export function CheckoutPage() {
 
   const productKey = searchParams.get("product");
   const packKey = searchParams.get("pack");
+  const interval = searchParams.get("interval") === "yearly" ? "yearly" : "monthly";
 
   const product = useMemo(() => {
     if (packKey) {
@@ -41,7 +42,11 @@ export function CheckoutPage() {
     }
     if (productKey === "pro") {
       const plan = getPlanById("pro");
-      return plan ? planToCheckoutProduct(plan) : null;
+      return plan ? planToCheckoutProduct(plan, interval) : null;
+    }
+    if (productKey === "business") {
+      const plan = getPlanById("business");
+      return plan ? planToCheckoutProduct(plan, interval) : null;
     }
     if (productKey === "additional-seat") {
       return seatToCheckoutProduct(ADDITIONAL_TEAM_SEAT, seats);
@@ -51,7 +56,7 @@ export function CheckoutPage() {
       pack: packKey,
       seats,
     });
-  }, [packKey, productKey, seats]);
+  }, [interval, packKey, productKey, seats]);
 
   async function handleCheckout() {
     if (!product || product.amountCents === null) {
@@ -80,6 +85,7 @@ export function CheckoutPage() {
             product: productKey ?? undefined,
             pack: packKey ?? undefined,
             seats: productKey === "additional-seat" ? seats : undefined,
+            interval: product?.kind === "plan" ? interval : undefined,
             successUrl: session.successUrl,
             cancelUrl: session.cancelUrl,
           }),

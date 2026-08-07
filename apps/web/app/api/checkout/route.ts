@@ -16,6 +16,7 @@ const bodySchema = z.object({
   pack: z.string().trim().max(80).optional(),
   seats: z.number().int().min(1).max(100).optional(),
   provider: z.string().trim().max(40).optional(),
+  interval: z.enum(["monthly", "yearly"]).optional(),
   successUrl: z.string().url().optional(),
   cancelUrl: z.string().url().optional(),
 });
@@ -79,10 +80,7 @@ export async function POST(request: Request) {
       returnUrl: session.successUrl,
       notifyUrl: `${siteUrl}/api/payments/webhook`,
       metadata: session.metadata,
-      providerPlanId:
-        process.env[
-          `LEMONSQUEEZY_VARIANT_${session.productId.toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`
-        ],
+      providerPlanId: getLemonVariantId(session.productId, session.metadata.interval),
     });
 
     return Response.json({
@@ -98,4 +96,13 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
+
+function getLemonVariantId(productId: string, interval?: string) {
+  const key = productId.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+  const baseKey = `LEMONSQUEEZY_VARIANT_${key}`;
+  return (
+    (interval === "yearly" ? process.env[`${baseKey}_YEARLY`] : undefined) ??
+    process.env[baseKey]
+  );
 }

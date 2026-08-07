@@ -27,7 +27,7 @@ const LazyOnboardingChecklist = dynamic(
     import("../ai/onboarding-checklist").then(
       (module) => module.OnboardingChecklist,
     ),
-  { loading: () => <SkeletonBlock className="h-48" /> },
+    { loading: () => <SkeletonBlock className="h-48" />, ssr: false },
 );
 
 const LazyKairosSuggestions = dynamic(
@@ -35,7 +35,7 @@ const LazyKairosSuggestions = dynamic(
     import("../ai/kairos-suggestions").then(
       (module) => module.KairosSuggestions,
     ),
-  { loading: () => <SkeletonBlock className="h-32" /> },
+  { loading: () => <SkeletonBlock className="h-32" />, ssr: false },
 );
 
 const LazyActivityTimeline = dynamic(
@@ -43,7 +43,7 @@ const LazyActivityTimeline = dynamic(
     import("../ai/activity-timeline").then(
       (module) => module.ActivityTimeline,
     ),
-  { loading: () => <SkeletonBlock className="h-72" /> },
+  { loading: () => <SkeletonBlock className="h-72" />, ssr: false },
 );
 
 const sectionMotion = {

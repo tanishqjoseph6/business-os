@@ -63,11 +63,11 @@ export function BillingClient() {
                 </Button>
               </Link>
             ) : plan.id === "business" ? (
-              <a href="mailto:hello@vanderbase.com" className="mt-5 block">
+              <Link href="/checkout?product=business&interval=monthly" className="mt-5 block">
                 <Button variant="secondary" className="w-full" size="sm">
-                  Contact sales
+                  Subscribe to Business
                 </Button>
-              </a>
+              </Link>
             ) : (
               <Link href="/pricing" className="mt-5 block">
                 <Button variant="secondary" className="w-full" size="sm">

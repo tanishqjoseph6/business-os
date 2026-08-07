@@ -77,7 +77,7 @@ export function CreditsPurchasePage() {
                 </li>
                 <li className="flex gap-2">
                   <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                  Secure Stripe & Razorpay checkout
+                  Secure Lemon Squeezy checkout
                 </li>
               </ul>
               {pack.contactSales ? (

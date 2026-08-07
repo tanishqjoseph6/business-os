@@ -197,8 +197,9 @@ export async function updateWorkspaceSettings(input: {
 
 export async function listWorkspaceMembers(
   workspaceId: string,
+  client?: SupabaseClient<Database>,
 ): Promise<WorkspaceMemberWithProfile[]> {
-  const supabase = await createServerClient();
+  const supabase = client ?? (await createServerClient());
   const { data: members, error } = await supabase
     .from("workspace_members")
     .select("*")
@@ -256,8 +257,9 @@ export async function createInvitation(input: {
 
 export async function listWorkspaceInvitations(
   workspaceId: string,
+  client?: SupabaseClient<Database>,
 ): Promise<Invitation[]> {
-  const supabase = await createServerClient();
+  const supabase = client ?? (await createServerClient());
   const { data, error } = await supabase
     .from("invitations")
     .select("*")

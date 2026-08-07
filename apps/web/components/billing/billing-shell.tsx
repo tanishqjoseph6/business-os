@@ -114,11 +114,25 @@ export function BillingShell({ section = "overview" }: { section?: BillingSectio
         <main className="min-w-0 flex-1">
           {section === "overview" ? <Overview snapshot={snapshot} plan={plan} onUpgrade={() => window.location.assign("/billing/plans")} /> : null}
           {section === "plans" ? (
-            <Plans currentPlan={snapshot.plan} interval={interval} setInterval={setInterval} onChange={(next) => run(async () => { await changeBillingPlan(next, interval); setSnapshot((old) => ({ ...old, plan: next, interval })); }, "Plan selection saved — secure checkout is ready.")} />
+            <Plans
+              currentPlan={snapshot.plan}
+              interval={interval}
+              setInterval={setInterval}
+              onChange={(next) => {
+                if (next !== "free") {
+                  window.location.assign(`/checkout?product=${next}&interval=${interval}`);
+                  return;
+                }
+                void run(async () => {
+                  await changeBillingPlan(next, interval);
+                  setSnapshot((old) => ({ ...old, plan: next, interval }));
+                }, "Plan selection saved.");
+              }}
+            />
           ) : null}
           {section === "usage" ? <Usage snapshot={snapshot} /> : null}
           {section === "invoices" ? <Invoices invoices={snapshot.invoices} /> : null}
-          {section === "payment-methods" ? <Payments methods={snapshot.paymentMethods} onAdd={() => run(addPaymentMethod, "Payment method setup is ready for Stripe Elements.")} /> : null}
+          {section === "payment-methods" ? <Payments methods={snapshot.paymentMethods} onAdd={() => run(addPaymentMethod, "Payment method setup is ready.")} /> : null}
           {section === "addons" ? <Addons onBuy={(name) => run(() => buyAddon(name), `${name} added to your checkout.`)} /> : null}
           {section === "settings" ? <Settings snapshot={snapshot} onSave={(values) => run(() => updateBillingSettings(values), "Billing settings saved.")} /> : null}
           {section === "subscription" ? <Subscription status={snapshot.status} onAction={(action) => run(() => manageSubscription(action), `${action[0]!.toUpperCase()}${action.slice(1)} request saved.`)} /> : null}

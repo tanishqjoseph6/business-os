@@ -1,13 +1,13 @@
 import type { DashboardInsight, DashboardSnapshot } from "@repo/types";
 import {
   contactDisplayName,
-  getCrmDashboardStats,
+  listActivities,
+  listCompanies,
   listContacts,
   listDeals,
-  listLeads,
 } from "./crm";
 import {
-  getInboxDashboardStats,
+  listInboxAccounts,
   listInboxCalendarEvents,
   listInboxTasks,
   listInboxThreads,
@@ -22,6 +22,7 @@ import { listWorkspaceActivityEvents } from "./activity";
 import { listNotificationsForUser } from "./notifications";
 import { listWorkspaceAiMemory } from "./workspace-memory";
 import { listWorkspaceAiReplyDrafts } from "./ai-reply-drafts";
+import { createServerClient } from "./server";
 
 const DEAL_STAGES = [
   "qualified",
@@ -152,71 +153,92 @@ export async function getDashboardSnapshot(input: {
   role: string;
   workspaceName: string;
 }): Promise<DashboardSnapshot> {
+  const client = await createServerClient();
   const [
-    crm,
-    inbox,
+    crmData,
+    inboxData,
     credits,
     creditTransactions,
     conversations,
     members,
     invitations,
-    tasks,
-    events,
     notifications,
     activity,
     memory,
-    leads,
-    deals,
-    contacts,
-    threads,
     aiDrafts,
   ] = await Promise.all([
-    getCrmDashboardStats({ workspaceId: input.workspaceId }),
-    getInboxDashboardStats({ workspaceId: input.workspaceId }),
-    getWorkspaceCredits({ workspaceId: input.workspaceId }),
-    listCreditTransactions({ workspaceId: input.workspaceId, limit: 6 }),
-    listConversations({ workspaceId: input.workspaceId, userId: input.userId }),
-    listWorkspaceMembers(input.workspaceId),
-    listWorkspaceInvitations(input.workspaceId),
-    listInboxTasks({
-      workspaceId: input.workspaceId,
-      status: "open",
-    }),
-    listInboxCalendarEvents({
-      workspaceId: input.workspaceId,
-      upcomingOnly: true,
-    }),
+    Promise.all([
+      listContacts({ workspaceId: input.workspaceId, client }),
+      listCompanies({ workspaceId: input.workspaceId, client }),
+      listDeals({ workspaceId: input.workspaceId, client }),
+      listActivities({ workspaceId: input.workspaceId, client }),
+    ]),
+    Promise.all([
+      listInboxAccounts({ workspaceId: input.workspaceId, client }),
+      listInboxThreads({ workspaceId: input.workspaceId, client }),
+      listInboxTasks({ workspaceId: input.workspaceId, status: "open", client }),
+      listInboxCalendarEvents({
+        workspaceId: input.workspaceId,
+        upcomingOnly: true,
+        client,
+      }),
+    ]),
+    getWorkspaceCredits({ workspaceId: input.workspaceId, client }),
+    listCreditTransactions({ workspaceId: input.workspaceId, limit: 6, client }),
+    listConversations({ workspaceId: input.workspaceId, userId: input.userId, client }),
+    listWorkspaceMembers(input.workspaceId, client),
+    listWorkspaceInvitations(input.workspaceId, client),
     listNotificationsForUser({
       workspaceId: input.workspaceId,
       userId: input.userId,
       limit: 8,
+      client,
     }),
     listWorkspaceActivityEvents({
       workspaceId: input.workspaceId,
       limit: 8,
+      client,
     }),
     listWorkspaceAiMemory({
       workspaceId: input.workspaceId,
       limit: 5,
+      client,
     }),
-    listLeads({ workspaceId: input.workspaceId }),
-    listDeals({ workspaceId: input.workspaceId }),
-    listContacts({ workspaceId: input.workspaceId }),
-    listInboxThreads({ workspaceId: input.workspaceId }),
     listWorkspaceAiReplyDrafts({
       workspaceId: input.workspaceId,
       limit: 12,
+      client,
     }).catch(() => []),
   ]);
+
+  const [contacts, companies, deals, activities] = crmData;
+  const [accounts, threads, tasks, events] = inboxData;
+  const leads = contacts.filter((contact) => contact.lifecycleStage === "lead");
+  const openDeals = deals.filter(
+    (deal) => deal.stage !== "won" && deal.stage !== "lost",
+  );
+  const wonDeals = deals.filter((deal) => deal.stage === "won");
+  const crm = {
+    contacts: contacts.length,
+    companies: companies.length,
+    leads: leads.length,
+    openDeals: openDeals.length,
+    pipelineValue: openDeals.reduce((sum, deal) => sum + deal.amount, 0),
+    activities: activities.length,
+  };
+  const inbox = {
+    accounts: accounts.filter((account) => account.status === "connected").length,
+    openThreads: threads.filter((thread) => thread.status === "open").length,
+    unread: threads.filter((thread) => thread.isUnread).length,
+    archived: threads.filter((thread) => thread.status === "archived").length,
+    tasksOpen: tasks.length,
+    upcomingMeetings: events.filter((event) => event.status === "scheduled").length,
+  };
 
   const pendingInvites = invitations.filter(
     (invitation) => invitation.status === "pending",
   ).length;
 
-  const openDeals = deals.filter(
-    (deal) => deal.stage !== "won" && deal.stage !== "lost",
-  );
-  const wonDeals = deals.filter((deal) => deal.stage === "won");
   const wonValue = wonDeals.reduce((sum, deal) => sum + deal.amount, 0);
   const revenueToday = wonDeals
     .filter((deal) => isToday(deal.updatedAt))

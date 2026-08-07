@@ -10,6 +10,7 @@ import {
   getPlanById,
   type CreditPack,
   type PricingPlan,
+  type PricingInterval,
   type TeamSeatProduct,
 } from "./pricing";
 
@@ -57,11 +58,12 @@ export function resolveCheckoutProduct(input: {
   product?: string | null;
   pack?: string | null;
   seats?: number | null;
+  interval?: PricingInterval | null;
 }): CheckoutProduct | null {
-  if (input.product === "pro") {
-    const plan = getPlanById("pro");
+  if (input.product === "pro" || input.product === "business") {
+    const plan = getPlanById(input.product);
     if (!plan || plan.price === null) return null;
-    return planToCheckoutProduct(plan);
+    return planToCheckoutProduct(plan, input.interval ?? "monthly");
   }
 
   if (input.product === "additional-seat" || input.seats) {
@@ -77,17 +79,22 @@ export function resolveCheckoutProduct(input: {
   return null;
 }
 
-export function planToCheckoutProduct(plan: PricingPlan): CheckoutProduct | null {
-  if (plan.price === null) return null;
+export function planToCheckoutProduct(
+  plan: PricingPlan,
+  interval: PricingInterval = "monthly",
+): CheckoutProduct | null {
+  if (plan.price === null || plan.id === "free") return null;
+  const price = interval === "yearly" ? plan.yearlyPrice : plan.monthlyPrice;
   return {
     kind: "plan",
     id: plan.id,
     name: `VanderBase ${plan.name}`,
-    amountCents: Math.round(plan.price * 100),
+    amountCents: Math.round(price * 100),
     description: plan.description,
     metadata: {
       planId: plan.id,
       billing: "subscription",
+      interval,
       creditsIncluded: plan.credits ?? 0,
       teamMembers: plan.teamMembers ?? 0,
     },

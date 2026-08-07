@@ -53,7 +53,7 @@ export function PricingPage() {
 
         <div className="mx-auto mt-8 flex items-center justify-center gap-2 text-center text-xs text-muted">
           <LockKeyhole className="h-3.5 w-3.5 text-primary" aria-hidden />
-          Secure payments powered by Stripe
+          Secure payments powered by Lemon Squeezy
         </div>
 
         <StorageAddons />
@@ -128,7 +128,14 @@ function PricingCard({ plan, interval }: { plan: PricingPlan; interval: PricingI
           </div>
         ) : <p className="mt-2 text-xs text-primary">{plan.id === "free" ? "Free forever" : "Billed monthly"}</p>}
       </div>
-      <Link href={plan.ctaHref} className="mt-7">
+      <Link
+        href={
+          plan.id === "pro" || plan.id === "business"
+            ? `/checkout?product=${plan.id}&interval=${interval}`
+            : plan.ctaHref
+        }
+        className="mt-7"
+      >
         <Button variant={plan.popular ? "primary" : "secondary"} className="w-full gap-2">
           {plan.cta}<ArrowRight className="h-3.5 w-3.5" aria-hidden />
         </Button>

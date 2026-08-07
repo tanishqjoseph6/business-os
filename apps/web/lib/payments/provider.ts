@@ -61,10 +61,13 @@ class LemonSqueezyPaymentProvider implements PaymentProvider {
   private get config() {
     const apiKey = process.env.LEMONSQUEEZY_API_KEY?.trim();
     const storeId = process.env.LEMONSQUEEZY_STORE_ID?.trim();
-    if (!apiKey || !storeId) {
-      throw new Error("LEMONSQUEEZY_API_KEY and LEMONSQUEEZY_STORE_ID are required");
+    const webhookSecret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET?.trim();
+    if (!apiKey || !storeId || !webhookSecret) {
+      throw new Error(
+        "LEMONSQUEEZY_API_KEY, LEMONSQUEEZY_STORE_ID, and LEMONSQUEEZY_WEBHOOK_SECRET are required",
+      );
     }
-    return { apiKey, storeId };
+    return { apiKey, storeId, webhookSecret };
   }
 
   async createCheckout(input: PaymentCheckoutInput): Promise<PaymentCheckoutResult> {
@@ -139,8 +142,8 @@ class LemonSqueezyPaymentProvider implements PaymentProvider {
   }
 
   verifyWebhook(rawBody: string, signature: string) {
-    const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET?.trim();
-    if (!secret || !signature) return false;
+    const secret = this.config.webhookSecret;
+    if (!signature) return false;
     const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
     const left = Buffer.from(expected, "utf8");
     const right = Buffer.from(signature, "utf8");
