@@ -4,7 +4,7 @@ import { CheckoutPage } from "../../components/pricing/checkout-page";
 
 export const metadata: Metadata = {
   title: "Checkout | VanderBase",
-  description: "Complete a one-time VanderBase purchase for Pro, AI credits, or team seats.",
+  description: "Complete a secure VanderBase purchase or subscription checkout.",
 };
 
 export default function CheckoutRoute() {

@@ -114,7 +114,7 @@ export function BillingShell({ section = "overview" }: { section?: BillingSectio
         <main className="min-w-0 flex-1">
           {section === "overview" ? <Overview snapshot={snapshot} plan={plan} onUpgrade={() => window.location.assign("/billing/plans")} /> : null}
           {section === "plans" ? (
-            <Plans currentPlan={snapshot.plan} interval={interval} setInterval={setInterval} onChange={(next) => run(async () => { await changeBillingPlan(next, interval); setSnapshot((old) => ({ ...old, plan: next, interval })); }, "Plan selection saved — Stripe checkout will be connected here.")} />
+            <Plans currentPlan={snapshot.plan} interval={interval} setInterval={setInterval} onChange={(next) => run(async () => { await changeBillingPlan(next, interval); setSnapshot((old) => ({ ...old, plan: next, interval })); }, "Plan selection saved — secure checkout is ready.")} />
           ) : null}
           {section === "usage" ? <Usage snapshot={snapshot} /> : null}
           {section === "invoices" ? <Invoices invoices={snapshot.invoices} /> : null}
@@ -132,10 +132,10 @@ export function BillingShell({ section = "overview" }: { section?: BillingSectio
           >
             S
           </span>
-          <span>Stripe Checkout — Coming Soon</span>
+            <span>Secure Payments</span>
         </div>
         <p className="mt-2 text-xs text-muted">
-          Secure online payments will be available soon through Stripe Checkout.
+          Secure online payments are processed through our payment provider.
         </p>
       </section>
     </div>

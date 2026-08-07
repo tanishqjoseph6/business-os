@@ -1,6 +1,6 @@
 /**
- * One-time payment checkout helpers for VanderBase.
- * Supports Stripe and Razorpay payment intents / orders — never recurring subscriptions.
+ * Pricing-to-checkout mapping. Gateway code lives in lib/payments and is
+ * deliberately absent from this file.
  */
 
 import {
@@ -13,7 +13,7 @@ import {
   type TeamSeatProduct,
 } from "./pricing";
 
-export type CheckoutProvider = "stripe" | "razorpay";
+export type CheckoutProvider = string;
 
 export type CheckoutProductKind = "plan" | "credit_pack" | "team_seat";
 
@@ -29,7 +29,7 @@ export type CheckoutProduct = {
 
 export type OneTimeCheckoutSessionInput = {
   product: CheckoutProduct;
-  provider: CheckoutProvider;
+  provider?: CheckoutProvider;
   workspaceId?: string;
   userId?: string;
   successUrl: string;
@@ -38,7 +38,7 @@ export type OneTimeCheckoutSessionInput = {
 };
 
 export type OneTimeCheckoutSession = {
-  mode: "payment";
+  mode: "payment" | "subscription";
   provider: CheckoutProvider;
   productId: string;
   productKind: CheckoutProductKind;
@@ -50,7 +50,6 @@ export type OneTimeCheckoutSession = {
   workspaceId?: string;
   userId?: string;
   metadata: Record<string, string>;
-  /** Provider-specific payload ready for Stripe Checkout Session or Razorpay Order. */
   providerPayload: Record<string, unknown>;
 };
 
@@ -88,7 +87,7 @@ export function planToCheckoutProduct(plan: PricingPlan): CheckoutProduct | null
     description: plan.description,
     metadata: {
       planId: plan.id,
-      billing: "one_time",
+      billing: "subscription",
       creditsIncluded: plan.credits ?? 0,
       teamMembers: plan.teamMembers ?? 0,
     },
@@ -132,8 +131,8 @@ export function seatToCheckoutProduct(
 }
 
 /**
- * Build a one-time (non-recurring) checkout session for Stripe or Razorpay.
- * Explicitly sets mode/payment type so providers never create subscriptions.
+ * Build a provider-neutral checkout session. Plans are recurring; credit packs
+ * and seats remain one-time purchases.
  */
 export function createOneTimeCheckoutSession(
   input: OneTimeCheckoutSessionInput,
@@ -165,43 +164,15 @@ export function createOneTimeCheckoutSession(
     metadata[key] = String(value);
   }
 
-  const providerPayload =
-    input.provider === "stripe"
-      ? {
-          // Stripe Checkout Session — payment mode only (never "subscription")
-          mode: "payment" as const,
-          line_items: [
-            {
-              price_data: {
-                currency: "usd",
-                unit_amount: unitAmountCents,
-                product_data: {
-                  name: input.product.name,
-                  description: input.product.description,
-                  metadata,
-                },
-              },
-              quantity: lineQuantity,
-            },
-          ],
-          success_url: input.successUrl,
-          cancel_url: input.cancelUrl,
-          metadata,
-        }
-      : {
-          // Razorpay Order — one-time payment only (no subscription/plan_id)
-          amount: amountCents,
-          currency: "USD",
-          receipt: `vb_${input.product.id}_${Date.now()}`,
-          notes: metadata,
-          payment: {
-            capture: true,
-          },
-        };
+  const providerPayload = {
+    amount: amountCents / 100,
+    currency: "USD",
+    metadata,
+  };
 
   return {
-    mode: "payment",
-    provider: input.provider,
+    mode: input.product.kind === "plan" ? "subscription" : "payment",
+    provider: input.provider ?? "configured",
     productId: input.product.id,
     productKind: input.product.kind,
     amountCents,

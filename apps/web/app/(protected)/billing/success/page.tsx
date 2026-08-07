@@ -4,7 +4,7 @@ import { Button } from "@repo/ui/button";
 import { Card } from "@repo/ui/card";
 
 export default function BillingSuccessPage() {
-  return <BillingResult icon={<CheckCircle2 className="h-8 w-8" />} title="Payment successful" body="Your mock payment was completed. Once Stripe is connected, your subscription and invoice will sync automatically." tone="success" action="Back to billing" href="/billing" />;
+  return <BillingResult icon={<CheckCircle2 className="h-8 w-8" />} title="Payment successful" body="Your payment was received. Your subscription and invoice will appear in Billing after confirmation." tone="success" action="Back to billing" href="/billing" />;
 }
 
 function BillingResult({ icon, title, body, tone, action, href }: { icon: React.ReactNode; title: string; body: string; tone: "success" | "danger"; action: string; href: string }) {

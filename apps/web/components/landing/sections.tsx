@@ -607,8 +607,8 @@ export function PricingSection() {
         </Reveal>
 
         <div className="mt-8 flex flex-col items-center justify-center gap-2 text-center text-xs text-muted sm:flex-row">
-          <span>🔒 Secure payments powered by Stripe</span>
-          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1">Stripe Checkout Coming Soon</span>
+          <span>🔒 Secure payments</span>
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1">Secure Payments</span>
         </div>
 
         <Reveal className="mt-10 overflow-x-auto rounded-3xl border border-white/10">

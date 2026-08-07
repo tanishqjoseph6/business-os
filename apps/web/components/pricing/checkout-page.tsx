@@ -20,14 +20,12 @@ import {
   planToCheckoutProduct,
   resolveCheckoutProduct,
   seatToCheckoutProduct,
-  type CheckoutProvider,
 } from "../../lib/checkout";
 import { VanderBaseLogo } from "../branding/vanderbase-logo";
 
 export function CheckoutPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [provider, setProvider] = useState<CheckoutProvider>("stripe");
   const [seats, setSeats] = useState(1);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +68,6 @@ export function CheckoutPage() {
             productKey === "additional-seat"
               ? seatToCheckoutProduct(ADDITIONAL_TEAM_SEAT, seats)
               : product,
-          provider,
           successUrl: `${origin}/billing?checkout=success`,
           cancelUrl: `${origin}/checkout?${packKey ? `pack=${packKey}` : `product=${productKey ?? "pro"}`}&cancelled=1`,
           quantity: productKey === "additional-seat" ? seats : 1,
@@ -83,7 +80,6 @@ export function CheckoutPage() {
             product: productKey ?? undefined,
             pack: packKey ?? undefined,
             seats: productKey === "additional-seat" ? seats : undefined,
-            provider,
             successUrl: session.successUrl,
             cancelUrl: session.cancelUrl,
           }),
@@ -92,7 +88,7 @@ export function CheckoutPage() {
         const payload = (await response.json()) as {
           ok: boolean;
           session?: typeof session;
-          checkoutUrl?: string | null;
+          checkout?: { checkoutToken?: string; redirectUrl?: string };
           message?: string;
           error?: string;
         };
@@ -101,14 +97,14 @@ export function CheckoutPage() {
           throw new Error(payload.error ?? "Checkout failed");
         }
 
-        if (payload.checkoutUrl) {
-          window.location.href = payload.checkoutUrl;
+        if (payload.checkout?.redirectUrl || payload.checkout?.checkoutToken) {
+          window.location.assign(payload.checkout.redirectUrl ?? payload.checkout.checkoutToken!);
           return;
         }
 
         setSessionPreview(
           payload.message ??
-            `${provider} payment prepared for ${formatUsdFromCents(session.amountCents)}. Connect ${provider === "stripe" ? "STRIPE_SECRET_KEY" : "RAZORPAY_KEY_ID"} to redirect to live checkout.`,
+            `Payment prepared for ${formatUsdFromCents(session.amountCents)}.`,
         );
       } catch (checkoutError) {
         setError(
@@ -140,7 +136,7 @@ export function CheckoutPage() {
     <CheckoutShell>
       <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <Card className="p-6 sm:p-8">
-          <Badge variant="accent">Secure payment</Badge>
+          <Badge variant="accent">Secure Payments</Badge>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight">{product.name}</h1>
           <p className="mt-2 text-sm leading-6 text-secondary">{product.description}</p>
           <p className="mt-2 text-xs text-muted">{PRICING_TAGLINE}</p>
@@ -170,27 +166,9 @@ export function CheckoutPage() {
                       : product.amountCents,
                   )}
             </p>
-            <p className="mt-1 text-sm text-primary">No monthly or yearly subscription</p>
-          </div>
-
-          <div className="mt-6">
-            <p className="text-sm font-medium">Payment provider</p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {(["stripe", "razorpay"] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setProvider(option)}
-                  className={`rounded-2xl border px-4 py-3 text-sm capitalize transition ${
-                    provider === option
-                      ? "border-primary bg-primary/10 text-foreground"
-                      : "border-border text-secondary hover:bg-elevated"
-                  }`}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
+            <p className="mt-1 text-sm text-primary">
+              {product.kind === "plan" ? "Recurring subscription" : "One-time purchase"}
+            </p>
           </div>
 
           {error ? (
@@ -216,7 +194,7 @@ export function CheckoutPage() {
               ) : (
                 <CreditCard className="h-4 w-4" aria-hidden />
               )}
-              Pay with {provider === "stripe" ? "Stripe" : "Razorpay"}
+              Continue to secure checkout
             </Button>
             <Button size="lg" variant="secondary" onClick={() => router.push("/pricing")}>
               <ArrowLeft className="h-4 w-4" aria-hidden />
@@ -232,7 +210,7 @@ export function CheckoutPage() {
               "Secure charge — billing follows your selected plan",
               "Workspace entitlements applied after payment",
               "Receipt and purchase history in Billing",
-              "Secure Stripe or Razorpay checkout",
+              "Secure payment checkout",
             ].map((item) => (
               <li key={item} className="flex gap-2">
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
@@ -244,6 +222,7 @@ export function CheckoutPage() {
             <Shield className="h-4 w-4 text-primary" aria-hidden />
             Checkout is secured by your selected payment provider.
           </div>
+          <p className="mt-3 text-center text-xs text-muted">Powered by Lemon Squeezy</p>
         </Card>
       </div>
     </CheckoutShell>
