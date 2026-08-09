@@ -28,7 +28,8 @@ export type IntegrationProviderId =
   | "stripe"
   | "paypal"
   | "dropbox"
-  | "linear";
+  | "linear"
+  | "actora";
 
 export type IntegrationProviderCategory =
   | "ai"
@@ -37,6 +38,7 @@ export type IntegrationProviderCategory =
   | "communication"
   | "productivity"
   | "development"
+  | "crm"
   | "finance"
   | "storage";
 

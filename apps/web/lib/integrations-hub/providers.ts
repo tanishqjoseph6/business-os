@@ -13,6 +13,7 @@ import {
   getGoogleOAuthCredentials,
   refreshGoogleOAuthToken,
 } from "@repo/ai";
+import { getActoraWorkspace } from "../actora-client.server";
 
 function env(...keys: string[]): boolean {
   return keys.every((key) => Boolean(process.env[key]?.trim()));
@@ -881,6 +882,102 @@ const LAUNCH_PROVIDERS: IntegrationProviderDefinition[] = [
     clientIdEnv: "ZOOM_CLIENT_ID",
     clientSecretEnv: "ZOOM_CLIENT_SECRET",
   }),
+  {
+    id: "actora",
+    name: "Actora CRM",
+    category: "crm",
+    description: "Connect Actora workspace CRM data and tasks.",
+    featured: true,
+    permissions: [
+      "Read workspace",
+      "Read and write contacts",
+      "Read and write companies",
+      "Read and write deals",
+      "Read and write tasks",
+    ],
+    scopes: [
+      "workspace:read",
+      "contacts:read",
+      "contacts:write",
+      "crm:read",
+      "crm:write",
+      "tasks:read",
+      "tasks:write",
+    ],
+    kairosActions: [
+      {
+        name: "list_tasks",
+        description: "List Actora tasks",
+        examplePrompt: "Show my Actora tasks.",
+      },
+      {
+        name: "list_contacts",
+        description: "List Actora contacts",
+        examplePrompt: "Show my Actora contacts.",
+      },
+      {
+        name: "create_contact",
+        description: "Create an Actora contact",
+        examplePrompt: "Create an Actora contact.",
+      },
+      {
+        name: "update_contact",
+        description: "Update an Actora contact",
+        examplePrompt: "Update this Actora contact.",
+      },
+      {
+        name: "list_companies",
+        description: "List Actora companies",
+        examplePrompt: "Show my Actora companies.",
+      },
+      {
+        name: "list_deals",
+        description: "List Actora deals",
+        examplePrompt: "Show my Actora deals.",
+      },
+      {
+        name: "create_task",
+        description: "Create an Actora task",
+        examplePrompt: "Create an Actora task for this follow-up.",
+      },
+      {
+        name: "delete_task",
+        description: "Delete an Actora task",
+        examplePrompt: "Delete this Actora task.",
+      },
+    ],
+    requiredEnv: ["ACTORA_API_KEY"],
+    isConfigured: () => env("ACTORA_API_KEY"),
+    connectionType: "api_key",
+    buildAuthUrl: () => "",
+    exchangeCode: async () => {
+      throw new Error("Actora uses an API key connection");
+    },
+    fetchProfile: async () => {
+      return {
+        email: null,
+        name: "Actora workspace",
+        externalAccountId: "actora-workspace",
+      };
+    },
+    connect: async () => {
+      await getActoraWorkspace();
+      return {
+        accountName: "Actora workspace",
+        externalAccountId: "actora-workspace",
+        permissions: [
+          "workspace:read",
+          "contacts:read",
+          "contacts:write",
+          "crm:read",
+          "crm:write",
+          "tasks:read",
+          "tasks:write",
+        ],
+        metadata: { verified: true },
+      };
+    },
+  },
   {
     id: "linear",
     name: "Linear",

@@ -44,6 +44,7 @@ export const integrationHubCategorySchema = z.enum([
   "communication",
   "productivity",
   "development",
+  "crm",
   "finance",
   "storage",
 ]);

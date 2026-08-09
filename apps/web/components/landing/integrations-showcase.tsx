@@ -181,6 +181,12 @@ export function IntegrationsShowcase() {
             Connect the tools you already use. We&apos;re continuously adding new integrations
             across sales, marketing, collaboration, finance, and development.
           </p>
+          <p className="mt-3 text-sm font-medium text-primary">
+            Actora CRM — Now Available
+          </p>
+          <p className="mt-1 text-sm text-secondary">
+            Connect your Actora workspace and bring task data into VanderBase.
+          </p>
         </Reveal>
 
         <StatusBar />

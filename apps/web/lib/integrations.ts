@@ -69,6 +69,14 @@ export const IMPLEMENTED_INTEGRATIONS: Integration[] = [
     keywords: ["issues", "tasks", "projects", "engineering"],
     available: true,
   },
+  {
+    id: "actora",
+    name: "Actora CRM",
+    categories: ["crm"],
+    description: "Connect your CRM workspace, contacts, companies, and deals.",
+    keywords: ["crm", "contacts", "tasks", "customer data"],
+    available: true,
+  },
 ];
 
 export const IMPLEMENTED_INTEGRATION_IDS = new Set(

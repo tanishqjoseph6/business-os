@@ -28,6 +28,7 @@ const INTEGRATION_COMPANIES: Record<string, string> = {
   "google-calendar": "Google",
   "google-drive": "Google",
   linear: "Linear",
+  actora: "Actora",
   notion: "Notion Labs",
   outlook: "Microsoft",
   slack: "Salesforce",
@@ -153,7 +154,9 @@ export function IntegrationCard({ card }: { card: IntegrationHubCard }) {
       <div className="mb-4 flex flex-wrap gap-2">
         {!connected ? (
           <Button size="sm" loading={pending} onClick={connect}>
-            {card.id === "notion"
+            {card.id === "actora"
+              ? "Connect Actora CRM"
+              : card.id === "notion"
               ? "Connect Notion"
               : card.id === "gmail"
                 ? "Connect Gmail"

@@ -96,6 +96,14 @@ const ICON_MAP: Record<string, SimpleIcon> = {
 
 /** Brand-accurate fallbacks for icons removed from the simple-icons package. */
 const CUSTOM_SVGS: Record<string, { viewBox: string; content: ReactNode }> = {
+  actora: {
+    viewBox: "0 0 24 24",
+    content: (
+      <>
+        <path fill="#F97316" d="M12 2 3.5 22h4.1l1.7-4.2h5.4l1.7 4.2h4.1L12 2Zm0 6.6 1.5 5.2h-3L12 8.6Z" />
+      </>
+    ),
+  },
   slack: {
     viewBox: "0 0 24 24",
     content: (

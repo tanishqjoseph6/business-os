@@ -27,6 +27,7 @@ import { GmailSyncPanel } from "../inbox/gmail-sync-panel";
 import { GoogleCalendarPanel } from "./google-calendar-panel";
 import { GoogleDrivePanel } from "./google-drive-panel";
 import { LinearPanel } from "./linear-panel";
+import { ActoraPanel } from "./actora-panel";
 
 const EVENT_LABEL: Record<string, string> = {
   connected: "Connected",
@@ -76,7 +77,9 @@ export function IntegrationDetailClient({
   }
 
   const connectLabel =
-    catalog.id === "gmail"
+    catalog.id === "actora"
+      ? "Connect Actora CRM"
+      : catalog.id === "gmail"
       ? "Connect Gmail"
       : catalog.id === "google-calendar"
         ? "Connect Google Calendar"
@@ -330,6 +333,7 @@ export function IntegrationDetailClient({
       ) : null}
       {catalog.id === "google-drive" && connected ? <GoogleDrivePanel /> : null}
       {catalog.id === "linear" && connected ? <LinearPanel /> : null}
+      {catalog.id === "actora" && connected ? <ActoraPanel /> : null}
     </div>
   );
 }

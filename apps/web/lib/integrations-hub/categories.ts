@@ -12,6 +12,7 @@ export const INTEGRATION_HUB_CATEGORIES: {
   { id: "communication", label: "Communication" },
   { id: "productivity", label: "Productivity" },
   { id: "development", label: "Development" },
+  { id: "crm", label: "CRM" },
   { id: "finance", label: "Finance" },
   { id: "storage", label: "Storage" },
 ];
