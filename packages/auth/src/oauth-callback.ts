@@ -1,7 +1,7 @@
 import { createServerClient as createSupabaseServerClient } from "@supabase/ssr";
 import { getPublicSupabaseEnv } from "@repo/database/env";
 import { NextResponse, type NextRequest } from "next/server";
-import { getSiteUrl, sanitizeAuthNextPath } from "./site-url";
+import { sanitizeAuthNextPath } from "./site-url";
 
 type SessionCookie = {
   name: string;
@@ -20,11 +20,9 @@ type SessionCookie = {
  * Cookies must be written onto the same redirect response that is returned.
  */
 export async function handleAuthCallback(request: NextRequest) {
-  const requestOrigin = request.nextUrl.origin;
-  const origin =
-    process.env.NODE_ENV === "production"
-      ? getSiteUrl(requestOrigin)
-      : requestOrigin;
+  // Use the origin that handled the callback. This keeps custom domains and
+  // Vercel preview URLs consistent with the browser's OAuth request.
+  const origin = request.nextUrl.origin;
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
   const next = sanitizeAuthNextPath(searchParams.get("next"));
@@ -62,7 +60,6 @@ export async function handleAuthCallback(request: NextRequest) {
   }
 
   const destination = new URL(next, origin);
-  let redirectResponse = NextResponse.redirect(destination);
   let sessionCookies: SessionCookie[] = [];
 
   const env = getPublicSupabaseEnv();
@@ -78,13 +75,6 @@ export async function handleAuthCallback(request: NextRequest) {
           sessionCookies = cookiesToSet;
           cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value);
-          });
-          redirectResponse = NextResponse.redirect(destination);
-          cookiesToSet.forEach(({ name, value, options }) => {
-            redirectResponse.cookies.set(name, value, {
-              path: "/",
-              ...options,
-            });
           });
         },
       },
@@ -128,14 +118,25 @@ export async function handleAuthCallback(request: NextRequest) {
       verifiedDestination.searchParams.set("next", preservedNext);
     }
     const nextResponse = NextResponse.redirect(verifiedDestination);
-    sessionCookies.forEach(({ name, value, options }) => {
-      nextResponse.cookies.set(name, value, {
-        path: "/",
-        ...options,
-      });
-    });
-    redirectResponse = nextResponse;
+    applySessionCookies(nextResponse, sessionCookies);
+    nextResponse.headers.set("Cache-Control", "no-store");
+    return nextResponse;
   }
 
+  const redirectResponse = NextResponse.redirect(destination);
+  applySessionCookies(redirectResponse, sessionCookies);
+  redirectResponse.headers.set("Cache-Control", "no-store");
   return redirectResponse;
+}
+
+function applySessionCookies(
+  response: NextResponse,
+  cookies: SessionCookie[],
+): void {
+  cookies.forEach(({ name, value, options }) => {
+    response.cookies.set(name, value, {
+      path: "/",
+      ...options,
+    });
+  });
 }
