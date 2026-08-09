@@ -61,6 +61,14 @@ export const IMPLEMENTED_INTEGRATIONS: Integration[] = [
     keywords: ["drive", "files", "docs", "google"],
     available: true,
   },
+  {
+    id: "linear",
+    name: "Linear",
+    categories: ["productivity"],
+    description: "Connect Linear teams, projects, and issues.",
+    keywords: ["issues", "tasks", "projects", "engineering"],
+    available: true,
+  },
 ];
 
 export const IMPLEMENTED_INTEGRATION_IDS = new Set(
@@ -127,7 +135,7 @@ export const INTEGRATIONS: Integration[] = [
   { id: "zapier", name: "Zapier", categories: ["productivity"], description: "Workflow Automation", keywords: ["automation", "zaps"], available: false },
   { id: "n8n", name: "n8n", categories: ["productivity"], description: "Self-hosted Automations", keywords: ["workflows"], available: false },
   { id: "figma", name: "Figma", categories: ["productivity"], description: "Design Handoff", keywords: ["design", "ui"], available: false },
-  { id: "linear", name: "Linear", categories: ["productivity"], description: "Issue Tracking", keywords: ["issues", "tasks"], available: false },
+  { id: "linear", name: "Linear", categories: ["productivity"], description: "Issue Tracking", keywords: ["issues", "tasks"], available: true },
   { id: "clickup", name: "ClickUp", categories: ["productivity"], description: "Project Management", keywords: ["tasks"], available: false },
   { id: "trello", name: "Trello", categories: ["productivity"], description: "Kanban Boards", keywords: ["boards"], available: false },
   { id: "asana", name: "Asana", categories: ["productivity"], description: "Team Workflows", keywords: ["projects"], available: false },

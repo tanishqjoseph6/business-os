@@ -109,8 +109,9 @@ export function SignInForm() {
                 oauthEmail ? `&email=${encodeURIComponent(oauthEmail)}` : ""
               }`
             : nextPath;
-        router.replace(target);
-        router.refresh();
+        // Use a full navigation after auth so middleware reads the freshly
+        // persisted Supabase cookies before rendering the protected route.
+        window.location.assign(target);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to sign in");
       }
@@ -167,7 +168,6 @@ export function SignInForm() {
 }
 
 export function SignupForm() {
-  const router = useRouter();
   const { showToast } = useAuthToast();
   const { secondsLeft, canResend, startCountdown } = useResendCountdown();
   const [error, setError] = useState<string | null>(null);
@@ -207,8 +207,7 @@ export function SignupForm() {
           window.sessionStorage.setItem("vb_verify_email", parsed.data.email);
         }
         if (result.session && isEmailVerified(result.user)) {
-          router.replace("/dashboard");
-          router.refresh();
+          window.location.assign("/dashboard");
           return;
         }
         setSignupEmail(parsed.data.email);

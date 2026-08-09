@@ -27,6 +27,7 @@ const INTEGRATION_COMPANIES: Record<string, string> = {
   gmail: "Google",
   "google-calendar": "Google",
   "google-drive": "Google",
+  linear: "Linear",
   notion: "Notion Labs",
   outlook: "Microsoft",
   slack: "Salesforce",
@@ -160,6 +161,8 @@ export function IntegrationCard({ card }: { card: IntegrationHubCard }) {
                   ? "Connect Google Calendar"
                   : card.id === "google-drive"
                     ? "Connect Google Drive"
+                    : card.id === "linear"
+                      ? "Connect Linear"
                 : "Connect"}
           </Button>
         ) : (

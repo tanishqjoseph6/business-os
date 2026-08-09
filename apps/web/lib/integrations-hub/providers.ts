@@ -373,6 +373,139 @@ async function notionProfile(accessToken: string): Promise<OAuthAccountProfile> 
   };
 }
 
+const LINEAR_SCOPES = ["read", "write", "issues:create"];
+
+async function linearViewer(accessToken: string): Promise<{
+  id: string;
+  name: string | null;
+  email: string | null;
+  organization: { id: string; name: string } | null;
+}> {
+  const response = await fetch("https://api.linear.app/graphql", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      query: `query LinearViewer {
+        viewer {
+          id
+          name
+          email
+          organization { id name }
+        }
+      }`,
+    }),
+    cache: "no-store",
+  });
+  const data = (await response.json()) as {
+    data?: {
+      viewer?: {
+        id: string;
+        name?: string | null;
+        email?: string | null;
+        organization?: { id: string; name: string } | null;
+      };
+    };
+    errors?: Array<{ message?: string }>;
+  };
+  if (!response.ok || !data.data?.viewer) {
+    throw new Error(
+      `Linear viewer lookup failed: ${data.errors?.[0]?.message ?? response.statusText}`,
+    );
+  }
+  return {
+    id: data.data.viewer.id,
+    name: data.data.viewer.name ?? null,
+    email: data.data.viewer.email ?? null,
+    organization: data.data.viewer.organization ?? null,
+  };
+}
+
+async function linearExchange(input: {
+  code: string;
+  redirectUri: string;
+}): Promise<OAuthTokenSet> {
+  const response = await fetch("https://api.linear.app/oauth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      code: input.code,
+      client_id: process.env.LINEAR_CLIENT_ID!.trim(),
+      client_secret: process.env.LINEAR_CLIENT_SECRET!.trim(),
+      redirect_uri: input.redirectUri,
+    }),
+    cache: "no-store",
+  });
+  const data = (await response.json()) as {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+    token_type?: string;
+    scope?: string;
+    error?: string;
+  };
+  if (!response.ok || !data.access_token) {
+    throw new Error(`Linear token exchange failed: ${data.error ?? response.statusText}`);
+  }
+  const viewer = await linearViewer(data.access_token);
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token ?? null,
+    expiresAt: expiresIn(data.expires_in ?? 86_400),
+    scopes: data.scope?.split(/[,\s]+/).filter(Boolean) ?? LINEAR_SCOPES,
+    tokenType: data.token_type ?? "Bearer",
+    metadata: {
+      workspaceId: viewer.organization?.id ?? null,
+      workspaceName: viewer.organization?.name ?? null,
+      viewerId: viewer.id,
+    },
+  };
+}
+
+async function linearRefresh(refreshToken: string): Promise<OAuthTokenSet> {
+  const response = await fetch("https://api.linear.app/oauth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: process.env.LINEAR_CLIENT_ID!.trim(),
+      client_secret: process.env.LINEAR_CLIENT_SECRET!.trim(),
+    }),
+    cache: "no-store",
+  });
+  const data = (await response.json()) as {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+    token_type?: string;
+    scope?: string;
+    error?: string;
+  };
+  if (!response.ok || !data.access_token) {
+    throw new Error(`Linear token refresh failed: ${data.error ?? response.statusText}`);
+  }
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token ?? refreshToken,
+    expiresAt: expiresIn(data.expires_in ?? 86_400),
+    scopes: data.scope?.split(/[,\s]+/).filter(Boolean) ?? LINEAR_SCOPES,
+    tokenType: data.token_type ?? "Bearer",
+  };
+}
+
+async function linearProfile(accessToken: string): Promise<OAuthAccountProfile> {
+  const viewer = await linearViewer(accessToken);
+  return {
+    email: viewer.email,
+    name: viewer.organization?.name ?? viewer.name ?? "Linear workspace",
+    externalAccountId: viewer.organization?.id ?? viewer.id,
+  };
+}
+
 const LAUNCH_PROVIDERS: IntegrationProviderDefinition[] = [
   defineApiKeyProvider({
     id: "openai",
@@ -748,6 +881,53 @@ const LAUNCH_PROVIDERS: IntegrationProviderDefinition[] = [
     clientIdEnv: "ZOOM_CLIENT_ID",
     clientSecretEnv: "ZOOM_CLIENT_SECRET",
   }),
+  {
+    id: "linear",
+    name: "Linear",
+    category: "productivity",
+    description: "Connect Linear teams, projects, and issues.",
+    featured: true,
+    permissions: ["Read teams", "Read projects", "Read issues", "Create issues", "Update issues"],
+    scopes: LINEAR_SCOPES,
+    kairosActions: [
+      {
+        name: "list_issues",
+        description: "List Linear issues",
+        examplePrompt: "Show my open Linear issues.",
+      },
+      {
+        name: "create_issue",
+        description: "Create a Linear issue",
+        examplePrompt: "Create a Linear issue for this task.",
+      },
+      {
+        name: "update_issue",
+        description: "Update a Linear issue",
+        examplePrompt: "Move this Linear issue to In Progress.",
+      },
+    ],
+    requiredEnv: ["LINEAR_CLIENT_ID", "LINEAR_CLIENT_SECRET"],
+    isConfigured: () => env("LINEAR_CLIENT_ID", "LINEAR_CLIENT_SECRET"),
+    buildAuthUrl: ({ redirectUri, state }) => {
+      const configuredRedirectUri =
+        process.env.LINEAR_REDIRECT_URI?.trim() || redirectUri;
+      const params = new URLSearchParams({
+        client_id: process.env.LINEAR_CLIENT_ID!.trim(),
+        redirect_uri: configuredRedirectUri,
+        response_type: "code",
+        scope: LINEAR_SCOPES.join(","),
+        state,
+      });
+      return `https://linear.app/oauth/authorize?${params.toString()}`;
+    },
+    exchangeCode: ({ code, redirectUri }) =>
+      linearExchange({
+        code,
+        redirectUri: process.env.LINEAR_REDIRECT_URI?.trim() || redirectUri,
+      }),
+    refreshAccessToken: ({ refreshToken }) => linearRefresh(refreshToken),
+    fetchProfile: ({ accessToken }) => linearProfile(accessToken),
+  },
   {
     id: "notion",
     name: "Notion",

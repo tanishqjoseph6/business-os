@@ -1,6 +1,14 @@
 import "server-only";
 import { createHmac, timingSafeEqual as nodeTimingSafeEqual } from "node:crypto";
 
+type LemonApiResponse = {
+  data?: {
+    id?: string;
+    type?: string;
+    attributes?: Record<string, unknown>;
+  };
+};
+
 export type PaymentMode = "payment" | "subscription";
 
 export type PaymentCheckoutInput = {
@@ -123,7 +131,10 @@ class LemonSqueezyPaymentProvider implements PaymentProvider {
       `/subscriptions/${encodeURIComponent(subscriptionId)}`,
       "GET",
     );
-    const url = String(response.data?.attributes?.urls?.customer_portal ?? "");
+    const urls = response.data?.attributes?.urls as
+      | { customer_portal?: unknown }
+      | undefined;
+    const url = String(urls?.customer_portal ?? "");
     if (!url) throw new Error("Lemon Squeezy did not return a customer portal URL");
     return url;
   }
@@ -151,7 +162,14 @@ class LemonSqueezyPaymentProvider implements PaymentProvider {
   }
 
   parseWebhook(rawBody: string): PaymentWebhook {
-    const payload = JSON.parse(rawBody) as Record<string, any>;
+    const payload = JSON.parse(rawBody) as {
+      data?: {
+        id?: string;
+        type?: string;
+        attributes?: Record<string, unknown>;
+      };
+      meta?: { event_name?: string; custom_data?: Record<string, unknown> };
+    };
     const data = payload.data ?? {};
     const attributes = data.attributes ?? {};
     const eventType = String(payload.meta?.event_name ?? "unknown");
@@ -244,6 +262,6 @@ class LemonSqueezyPaymentProvider implements PaymentProvider {
         `Lemon Squeezy request failed (${response.status}): ${responseBody.slice(0, 300)}`,
       );
     }
-    return (parsedBody ?? {}) as { data?: any };
+    return (parsedBody ?? {}) as LemonApiResponse;
   }
 }

@@ -44,12 +44,16 @@ function redirectForRequest(
   sessionResponse?: NextResponse,
 ) {
   if (isServerActionRequest(request) || isRscRequest(request)) {
-    return new NextResponse(null, {
+    const response = new NextResponse(null, {
       status: 303,
       headers: {
         "x-action-redirect": `${destination.pathname}${destination.search}`,
       },
     });
+    if (sessionResponse) {
+      copySessionCookies(sessionResponse, response);
+    }
+    return response;
   }
 
   const redirect = NextResponse.redirect(destination);

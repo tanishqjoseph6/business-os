@@ -1,7 +1,13 @@
 import { createServerClient as createSupabaseServerClient } from "@supabase/ssr";
 import { getPublicSupabaseEnv } from "@repo/database/env";
 import { NextResponse, type NextRequest } from "next/server";
-import { sanitizeAuthNextPath } from "./site-url";
+import { getSiteUrl, sanitizeAuthNextPath } from "./site-url";
+
+type SessionCookie = {
+  name: string;
+  value: string;
+  options?: Parameters<NextResponse["cookies"]["set"]>[2];
+};
 
 /**
  * Supabase OAuth / magic-link callback for Next.js App Router.
@@ -14,14 +20,18 @@ import { sanitizeAuthNextPath } from "./site-url";
  * Cookies must be written onto the same redirect response that is returned.
  */
 export async function handleAuthCallback(request: NextRequest) {
-  const { origin, searchParams } = request.nextUrl;
+  const requestOrigin = request.nextUrl.origin;
+  const origin =
+    process.env.NODE_ENV === "production"
+      ? getSiteUrl(requestOrigin)
+      : requestOrigin;
+  const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
   const next = sanitizeAuthNextPath(searchParams.get("next"));
   const isPasswordReset = next === "/reset-password" || next.startsWith("/reset-password/");
   const isEmailVerification =
     next === "/verify-email" ||
-    next.startsWith("/verify-email/") ||
-    (next === "/dashboard" && !isPasswordReset);
+    next.startsWith("/verify-email/");
 
   const failPath = isPasswordReset
     ? "/reset-password?error=invalid"
@@ -53,6 +63,7 @@ export async function handleAuthCallback(request: NextRequest) {
 
   const destination = new URL(next, origin);
   let redirectResponse = NextResponse.redirect(destination);
+  let sessionCookies: SessionCookie[] = [];
 
   const env = getPublicSupabaseEnv();
   const supabase = createSupabaseServerClient(
@@ -64,6 +75,7 @@ export async function handleAuthCallback(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
+          sessionCookies = cookiesToSet;
           cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value);
           });
@@ -116,8 +128,11 @@ export async function handleAuthCallback(request: NextRequest) {
       verifiedDestination.searchParams.set("next", preservedNext);
     }
     const nextResponse = NextResponse.redirect(verifiedDestination);
-    redirectResponse.cookies.getAll().forEach((cookie) => {
-      nextResponse.cookies.set(cookie.name, cookie.value);
+    sessionCookies.forEach(({ name, value, options }) => {
+      nextResponse.cookies.set(name, value, {
+        path: "/",
+        ...options,
+      });
     });
     redirectResponse = nextResponse;
   }

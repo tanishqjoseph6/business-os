@@ -51,7 +51,10 @@ export async function GET(request: Request) {
     const provider = getIntegrationProvider(decoded.provider);
     if (!provider) throw new Error("Unknown provider");
 
-    const redirectUri = getIntegrationOAuthRedirectUri(origin);
+    const redirectUri =
+      decoded.provider === "linear"
+        ? process.env.LINEAR_REDIRECT_URI?.trim() || getIntegrationOAuthRedirectUri(origin)
+        : getIntegrationOAuthRedirectUri(origin);
     const tokens = await provider.exchangeCode({ code, redirectUri });
     const profile = await provider.fetchProfile({
       accessToken: tokens.accessToken,

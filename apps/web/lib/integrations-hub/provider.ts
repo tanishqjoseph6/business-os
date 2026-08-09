@@ -27,7 +27,8 @@ export type IntegrationProviderId =
   | "gitlab"
   | "stripe"
   | "paypal"
-  | "dropbox";
+  | "dropbox"
+  | "linear";
 
 export type IntegrationProviderCategory =
   | "ai"

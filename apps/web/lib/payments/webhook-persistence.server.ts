@@ -2,13 +2,22 @@ import "server-only";
 import { createAdminClient } from "@repo/database";
 import type { PaymentWebhook } from "./provider";
 
+type AdminQuery = {
+  upsert(
+    values: unknown,
+    options?: unknown,
+  ): Promise<{ error?: { message: string } | null }>;
+};
+
 /**
  * Writes verified provider events to the provider-neutral ledger. The cast is
  * intentionally local until the generated Supabase Database type includes the
  * billing migration in every deployment environment.
  */
 export async function persistPaymentWebhook(provider: string, event: PaymentWebhook) {
-  const admin = createAdminClient() as any;
+  const admin = createAdminClient() as unknown as {
+    from(table: string): AdminQuery;
+  };
   const metadata = event.metadata;
   if (!metadata.userId) return;
 
@@ -34,7 +43,7 @@ export async function persistPaymentWebhook(provider: string, event: PaymentWebh
     const attributes = (event.raw as { data?: { attributes?: Record<string, unknown> } })?.data
       ?.attributes;
     const rawStatus = String(attributes?.status ?? event.status);
-    const subscriptionError = await admin.from("billing_subscriptions").upsert(
+    const { error: subscriptionError } = await admin.from("billing_subscriptions").upsert(
       {
         workspace_id: metadata.workspaceId || null,
         user_id: metadata.userId,
@@ -50,7 +59,7 @@ export async function persistPaymentWebhook(provider: string, event: PaymentWebh
         metadata: event.raw,
       },
       { onConflict: "provider,provider_subscription_id" },
-    ).then((result: { error?: { message: string } | null }) => result.error);
+    );
     if (subscriptionError) {
       throw new Error(`Unable to persist subscription: ${subscriptionError.message}`);
     }
