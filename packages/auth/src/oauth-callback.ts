@@ -84,6 +84,16 @@ export async function handleAuthCallback(request: NextRequest) {
       searchParams.get("error") ||
       searchParams.get("error_code") ||
       searchParams.get("error_description");
+    const providerErrorCode = searchParams.get("error_code");
+    const providerErrorDescription = searchParams.get("error_description");
+
+    // Supabase → Google token exchange failed BEFORE our PKCE hop.
+    // Typical URL: ?error=server_error&error_code=unexpected_failure&error_description=Unable+to+exchange+external+code:...
+    const isExternalCodeExchangeFailure =
+      /unable to exchange external code/i.test(providerErrorDescription ?? "") ||
+      (searchParams.get("error") === "server_error" &&
+        providerErrorCode === "unexpected_failure");
+
     if (providerError && (isPasswordReset || isEmailVerification)) {
       const expired =
         /expired|otp_expired|flow_state_expired/i.test(providerError) ||
@@ -97,9 +107,22 @@ export async function handleAuthCallback(request: NextRequest) {
         : `/verify-email?error=${errorCode}`;
       return NextResponse.redirect(new URL(path, origin));
     }
+
     console.warn("[auth.callback] missing code", {
       providerError: providerError ?? null,
+      providerErrorCode,
+      // Description is safe to log (contains only a short code prefix from GoTrue).
+      providerErrorDescription,
+      isExternalCodeExchangeFailure,
+      hasCodeVerifier: inbound.hasCodeVerifier,
     });
+
+    if (isExternalCodeExchangeFailure) {
+      return NextResponse.redirect(
+        new URL("/signin?error=google_exchange", origin),
+      );
+    }
+
     return NextResponse.redirect(new URL(failPath, origin));
   }
 

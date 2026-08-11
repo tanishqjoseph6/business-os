@@ -60,16 +60,15 @@ export async function signInWithGoogle(
     nextPath,
     siteOrigin: getSiteUrl(),
   });
+  // Stock Supabase Google login only. Do NOT pass Gmail-style queryParams
+  // (access_type=offline, prompt=consent) here — those belong on the separate
+  // Gmail OAuth client. Extra provider params have caused GoTrue
+  // "Unable to exchange external code" / unexpected_failure after consent.
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo: callbackUrl,
-      // Explicit PKCE — requires /auth/callback to exchange the code server-side.
       skipBrowserRedirect: false,
-      queryParams: {
-        access_type: "offline",
-        prompt: "consent",
-      },
     },
   });
 

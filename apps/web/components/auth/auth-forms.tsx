@@ -70,9 +70,11 @@ export function SignInForm() {
   const [error, setError] = useState<string | null>(
     authError === "auth_callback"
       ? "Authentication failed. Please try again."
-      : authError === "session_expired"
-        ? "Your session expired. Please sign in again."
-        : null,
+      : authError === "google_exchange" || authError === "server_error"
+        ? "Google sign-in failed while exchanging the authorization code with Google. Re-check the Supabase Google provider Client ID/Secret and that Google Cloud includes the Supabase callback URL as an Authorized redirect URI."
+        : authError === "session_expired"
+          ? "Your session expired. Please sign in again."
+          : null,
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();

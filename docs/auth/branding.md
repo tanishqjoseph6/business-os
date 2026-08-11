@@ -35,15 +35,21 @@ This controls the **Google account picker / consent UI**. It must say **VanderBa
 
 ### OAuth client used by VanderBase login
 
-Supabase Auth exchanges the Google code. The **Authorized redirect URI** on the Google OAuth client must be:
+Supabase Auth exchanges the Google code **before** our app’s `/auth/callback` PKCE step. The **Authorized redirect URI** on the Google OAuth client used in **Supabase → Authentication → Providers → Google** must be exactly:
 
 ```text
-https://<YOUR_PROJECT_REF>.supabase.co/auth/v1/callback
+https://pmfnjrszrnelymswwzwo.supabase.co/auth/v1/callback
 ```
+
+If Google consent succeeds but the browser lands with:
+
+`error=server_error&error_code=unexpected_failure&error_description=Unable+to+exchange+external+code:...`
+
+that failure is **Supabase ↔ Google** (wrong Client Secret, wrong client, or missing Supabase callback URI) — not our PKCE `code_verifier` / `exchangeCodeForSession`.
 
 Do **not** put `http://localhost:3000/...` on the consent screen as the app name or home page. Localhost belongs only in Supabase **Redirect URLs** for local development.
 
-> Keep the **Gmail Inbox** OAuth client (`GOOGLE_CLIENT_ID` for `/api/inbox/oauth/callback`) separate from the **Sign in with Google** client used in Supabase Auth.
+> Keep the **Gmail Inbox** OAuth client (`GOOGLE_CLIENT_ID` for `/api/inbox/oauth/callback`) **separate** from the **Sign in with Google** client pasted into Supabase Auth. Sharing one client is a common source of “Unable to exchange external code” after consent.
 
 ## 2. Supabase Auth — URLs & company
 
