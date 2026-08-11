@@ -99,13 +99,45 @@ export async function getWebsiteDashboardStats(input: { workspaceId: string; cli
     domains: domains.length,
   };
 }
-export async function createWebsiteProject(input: { workspaceId: string; userId: string; name: string; projectType: string; template: string; slug: string; settings?: Record<string, unknown>; client?: Client }): Promise<WebsiteProject> {
+export async function createWebsiteProject(input: { workspaceId: string; userId: string; name: string; projectType: string; template: string; slug: string; settings?: Record<string, unknown>; theme?: Record<string, unknown>; client?: Client }): Promise<WebsiteProject> {
   const supabase = await clientOrDefault(input.client);
   const { data, error } = await supabase.from("website_projects").insert({
     workspace_id: input.workspaceId, created_by: input.userId, name: input.name,
     project_type: input.projectType, template: input.template, slug: input.slug,
     settings: (input.settings ?? {}) as Json,
+    theme: (input.theme ?? {}) as Json,
   }).select("*").single();
   if (error || !data) throw new Error(`Failed to create website project: ${error?.message ?? "Unknown"}`);
+  return mapProject(data);
+}
+
+export async function updateWebsiteProject(input: {
+  workspaceId: string;
+  projectId: string;
+  name?: string;
+  status?: WebsiteProject["status"];
+  settings?: Record<string, unknown>;
+  theme?: Record<string, unknown>;
+  client?: Client;
+}): Promise<WebsiteProject> {
+  const supabase = await clientOrDefault(input.client);
+  const patch: Database["public"]["Tables"]["website_projects"]["Update"] = {
+    updated_at: new Date().toISOString(),
+  };
+  if (input.name !== undefined) patch.name = input.name;
+  if (input.status !== undefined) patch.status = input.status;
+  if (input.settings !== undefined) patch.settings = input.settings as Json;
+  if (input.theme !== undefined) patch.theme = input.theme as Json;
+
+  const { data, error } = await supabase
+    .from("website_projects")
+    .update(patch)
+    .eq("workspace_id", input.workspaceId)
+    .eq("id", input.projectId)
+    .select("*")
+    .single();
+  if (error || !data) {
+    throw new Error(`Failed to update website project: ${error?.message ?? "Unknown"}`);
+  }
   return mapProject(data);
 }

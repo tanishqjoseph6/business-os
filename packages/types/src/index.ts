@@ -220,11 +220,25 @@ export type {
   WebsiteForm,
   WebsiteDomain,
   WebsiteDashboardStats,
+  WebsiteBlueprint,
+  WebsiteBlueprintPage,
+  WebsiteBlueprintBlock,
   CreateWebsiteProjectInput,
   GenerateWebsiteInput,
+  RefineWebsiteInput,
+  ImproveWebsiteInput,
+  PublishWebsiteInput,
 } from "./website";
 
-export { websiteProjectTypeSchema, createWebsiteProjectSchema, generateWebsiteSchema } from "./website";
+export {
+  websiteProjectTypeSchema,
+  createWebsiteProjectSchema,
+  generateWebsiteSchema,
+  refineWebsiteSchema,
+  improveWebsiteSchema,
+  publishWebsiteSchema,
+  websiteBlueprintSchema,
+} from "./website";
 
 export type {
   CalendarBookingLink,

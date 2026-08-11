@@ -27,7 +27,18 @@ export type WebsiteProject = {
 
 export type WebsiteBlock = {
   id: string;
-  type: "hero" | "features" | "testimonials" | "pricing" | "faq" | "cta" | "text" | "gallery";
+  type:
+    | "hero"
+    | "features"
+    | "testimonials"
+    | "pricing"
+    | "faq"
+    | "cta"
+    | "text"
+    | "gallery"
+    | "team"
+    | "contact"
+    | "footer";
   props: Record<string, unknown>;
 };
 
@@ -83,6 +94,55 @@ export type WebsiteDashboardStats = {
   domains: number;
 };
 
+export const websiteColorPaletteSchema = z.object({
+  primary: z.string(),
+  secondary: z.string(),
+  accent: z.string(),
+  background: z.string(),
+  surface: z.string(),
+  text: z.string(),
+  muted: z.string(),
+});
+
+export const websiteBlueprintBlockSchema = z.object({
+  id: z.string().optional(),
+  type: z.string(),
+  props: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const websiteBlueprintPageSchema = z.object({
+  title: z.string(),
+  slug: z.string(),
+  blocks: z.array(websiteBlueprintBlockSchema),
+});
+
+export const websiteBlueprintSchema = z.object({
+  name: z.string(),
+  projectType: websiteProjectTypeSchema.default("website"),
+  purpose: z.string(),
+  audience: z.string(),
+  navigation: z.array(z.string()).default([]),
+  cta: z.object({
+    label: z.string(),
+    href: z.string().default("#contact"),
+  }),
+  theme: z.object({
+    style: z.string(),
+    typography: z.object({
+      heading: z.string(),
+      body: z.string(),
+    }),
+    colorPalette: websiteColorPaletteSchema,
+  }),
+  headline: z.string(),
+  description: z.string(),
+  pages: z.array(websiteBlueprintPageSchema).min(1),
+});
+
+export type WebsiteBlueprint = z.infer<typeof websiteBlueprintSchema>;
+export type WebsiteBlueprintPage = z.infer<typeof websiteBlueprintPageSchema>;
+export type WebsiteBlueprintBlock = z.infer<typeof websiteBlueprintBlockSchema>;
+
 export const createWebsiteProjectSchema = z.object({
   name: z.string().trim().min(1).max(120),
   projectType: websiteProjectTypeSchema.default("website"),
@@ -90,12 +150,31 @@ export const createWebsiteProjectSchema = z.object({
   prompt: z.string().trim().max(3000).optional(),
 });
 
+/** Prompt-first generation — name/type inferred when omitted. */
 export const generateWebsiteSchema = z.object({
-  name: z.string().trim().min(1).max(120),
-  projectType: websiteProjectTypeSchema,
-  prompt: z.string().trim().min(3).max(3000),
+  name: z.string().trim().min(1).max(120).optional(),
+  projectType: websiteProjectTypeSchema.optional().default("website"),
+  prompt: z.string().trim().min(8).max(3000),
   template: z.string().trim().min(1).max(80).default("creator"),
+});
+
+export const refineWebsiteSchema = z.object({
+  projectId: z.string().uuid(),
+  instruction: z.string().trim().min(3).max(2000),
+  blueprint: websiteBlueprintSchema,
+});
+
+export const improveWebsiteSchema = z.object({
+  projectId: z.string().uuid(),
+  blueprint: websiteBlueprintSchema,
+});
+
+export const publishWebsiteSchema = z.object({
+  projectId: z.string().uuid(),
 });
 
 export type CreateWebsiteProjectInput = z.infer<typeof createWebsiteProjectSchema>;
 export type GenerateWebsiteInput = z.infer<typeof generateWebsiteSchema>;
+export type RefineWebsiteInput = z.infer<typeof refineWebsiteSchema>;
+export type ImproveWebsiteInput = z.infer<typeof improveWebsiteSchema>;
+export type PublishWebsiteInput = z.infer<typeof publishWebsiteSchema>;
