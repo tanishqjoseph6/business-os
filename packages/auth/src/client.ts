@@ -58,6 +58,7 @@ export async function signInWithGoogle(
   console.info("[auth.google] starting OAuth", {
     redirectTo: callbackUrl,
     nextPath,
+    siteOrigin: getSiteUrl(),
   });
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient as createSupabaseServerClient } from "@supabase/ssr";
+import { getSupabaseCookieOptions } from "@repo/database/auth-cookies";
 import { getPublicSupabaseEnv } from "@repo/database/env";
 import { writeSecurityAuditLog } from "@repo/database/security";
 
@@ -13,16 +14,14 @@ async function signOutWithResponse(request: NextRequest) {
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
+      cookieOptions: getSupabaseCookieOptions(),
       cookies: {
         getAll() {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, {
-              path: "/",
-              ...options,
-            });
+            response.cookies.set(name, value, options);
           });
         },
       },

@@ -1,6 +1,7 @@
 import { createServerClient as createSupabaseServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@repo/types";
+import { getSupabaseCookieOptions } from "./auth-cookies";
 import { getPublicSupabaseEnv } from "./env";
 
 type CookieToSet = {
@@ -11,10 +12,7 @@ type CookieToSet = {
 
 function applyCookies(response: NextResponse, cookiesToSet: CookieToSet[]) {
   cookiesToSet.forEach(({ name, value, options }) => {
-    response.cookies.set(name, value, {
-      path: "/",
-      ...options,
-    });
+    response.cookies.set(name, value, options);
   });
 }
 
@@ -30,7 +28,7 @@ export function copySessionCookies(from: NextResponse, to: NextResponse) {
     return;
   }
   from.cookies.getAll().forEach(({ name, value }) => {
-    to.cookies.set(name, value, { path: "/" });
+    to.cookies.set(name, value, { path: "/", ...getSupabaseCookieOptions() });
   });
 }
 
@@ -46,6 +44,7 @@ export function createMiddlewareClient(request: NextRequest) {
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
+      cookieOptions: getSupabaseCookieOptions(),
       cookies: {
         getAll() {
           return request.cookies.getAll();

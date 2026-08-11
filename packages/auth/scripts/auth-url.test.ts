@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  PRODUCTION_CANONICAL_ORIGIN,
   buildAuthCallbackUrl,
+  canonicalizeSiteOrigin,
   getCallbackOrigin,
   sanitizeAuthNextPath,
 } from "../src/site-url.ts";
@@ -14,15 +16,30 @@ test("sanitizeAuthNextPath accepts only relative app paths", () => {
   assert.equal(sanitizeAuthNextPath(null), "/dashboard");
 });
 
-test("buildAuthCallbackUrl encodes next path", () => {
+test("buildAuthCallbackUrl encodes next path and canonicalizes apex → www", () => {
+  assert.equal(
+    buildAuthCallbackUrl("/dashboard", "https://www.vanderbase.com"),
+    "https://www.vanderbase.com/auth/callback?next=%2Fdashboard",
+  );
   assert.equal(
     buildAuthCallbackUrl("/dashboard", "https://vanderbase.com"),
-    "https://vanderbase.com/auth/callback?next=%2Fdashboard",
+    "https://www.vanderbase.com/auth/callback?next=%2Fdashboard",
   );
 });
 
-test("getCallbackOrigin uses the request host, never rewrites www↔apex", () => {
-  process.env.NEXT_PUBLIC_SITE_URL = "https://vanderbase.com";
+test("canonicalizeSiteOrigin maps apex to www", () => {
+  assert.equal(
+    canonicalizeSiteOrigin("https://vanderbase.com"),
+    PRODUCTION_CANONICAL_ORIGIN,
+  );
+  assert.equal(
+    canonicalizeSiteOrigin("https://www.vanderbase.com/"),
+    PRODUCTION_CANONICAL_ORIGIN,
+  );
+});
+
+test("getCallbackOrigin prefers request host and canonicalizes apex → www", () => {
+  process.env.NEXT_PUBLIC_SITE_URL = "https://www.vanderbase.com";
 
   const apex = getCallbackOrigin({
     nextUrl: { origin: "https://vanderbase.com" },
@@ -35,7 +52,8 @@ test("getCallbackOrigin uses the request host, never rewrites www↔apex", () =>
       },
     },
   });
-  assert.equal(apex, "https://vanderbase.com");
+  // Apex is never the app host in production (Vercel 308 → www).
+  assert.equal(apex, PRODUCTION_CANONICAL_ORIGIN);
 
   const www = getCallbackOrigin({
     nextUrl: { origin: "https://www.vanderbase.com" },
@@ -48,6 +66,5 @@ test("getCallbackOrigin uses the request host, never rewrites www↔apex", () =>
       },
     },
   });
-  // Must stay on www so host-only cookies match Location.
-  assert.equal(www, "https://www.vanderbase.com");
+  assert.equal(www, PRODUCTION_CANONICAL_ORIGIN);
 });

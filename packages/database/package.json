@@ -9,6 +9,7 @@
     "./server": "./src/server.ts",
     "./admin": "./src/admin.ts",
     "./middleware": "./src/middleware.ts",
+    "./auth-cookies": "./src/auth-cookies.ts",
     "./env": "./src/env.ts",
     "./workspace": "./src/workspace.ts",
     "./chat": "./src/chat.ts",

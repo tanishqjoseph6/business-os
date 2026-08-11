@@ -49,13 +49,14 @@ Do **not** put `http://localhost:3000/...` on the consent screen as the app name
 
 1. **Project Settings → General → Company name:** `VanderBase`
 2. **Authentication → URL Configuration**
-   - **Site URL:** `https://vanderbase.com` (production)
+   - **Site URL:** `https://www.vanderbase.com` (production — Vercel canonical host)
    - **Redirect URLs** (examples):
-     - `https://vanderbase.com/auth/callback`
-     - `https://vanderbase.com/auth/callback?next=/dashboard`
-     - `https://vanderbase.com/auth/callback?next=/verify-email`
-     - `https://vanderbase.com/auth/callback?next=/reset-password`
-     - `http://localhost:3000/auth/callback**` (local only)
+     - `https://www.vanderbase.com/auth/callback`
+     - `https://www.vanderbase.com/auth/callback?next=/dashboard`
+     - `https://www.vanderbase.com/auth/callback?next=/verify-email`
+     - `https://www.vanderbase.com/auth/callback?next=/reset-password`
+     - `https://vanderbase.com/auth/callback` (optional; apex 308s to www)
+     - `http://localhost:3000/auth/callback` (local only)
 3. **Authentication → Providers → Google** — enable; paste the Google Client ID/Secret from the consent-screen project above.
 
 ## 3. Supabase Auth — Email templates
@@ -73,15 +74,16 @@ Also set:
 - **Sender name:** `VanderBase`
 - Prefer custom SMTP so messages are not labeled as a generic auth provider.
 
-Logo URLs in the templates point at `https://vanderbase.com/branding/...` — ensure those assets are deployed publicly.
+Logo URLs in the templates point at `https://www.vanderbase.com/branding/...` — ensure those assets are deployed publicly.
 
 ## 4. App environment
 
 ```bash
-NEXT_PUBLIC_SITE_URL=https://vanderbase.com
+NEXT_PUBLIC_SITE_URL=https://www.vanderbase.com
 ```
 
 Avoid shipping production builds with `localhost` as the public site URL (metadata / OAuth redirects).
+Apex `https://vanderbase.com` redirects to www at the Vercel edge — Site URL and OAuth redirects must use **www**.
 
 ## 5. Verify checklist
 

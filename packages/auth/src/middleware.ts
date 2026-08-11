@@ -1,4 +1,5 @@
 import { createMiddlewareClient, copySessionCookies } from "@repo/database/middleware";
+import { getSupabaseCookieOptions } from "@repo/database/auth-cookies";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   ADMIN_ROUTES,
@@ -74,8 +75,29 @@ function hasSupabaseSessionCookie(request: NextRequest): boolean {
     );
 }
 
+function clearInvalidSessionCookies(
+  response: NextResponse,
+  cookieNames: string[],
+) {
+  const shared = getSupabaseCookieOptions();
+  for (const name of cookieNames) {
+    // Clear Domain=.vanderbase.com cookies (new).
+    response.cookies.set(name, "", { ...shared, maxAge: 0 });
+    // Clear legacy host-only cookies from pre-fix deploys.
+    response.cookies.set(name, "", { path: "/", maxAge: 0 });
+  }
+}
+
 export async function updateSession(request: NextRequest) {
   const { supabase, getResponse } = createMiddlewareClient(request);
+  const sessionCookieNames = request.cookies
+    .getAll()
+    .map((cookie) => cookie.name)
+    .filter(
+      (name) =>
+        (name.includes("auth-token") || name.startsWith("sb-")) &&
+        !name.includes("code-verifier"),
+    );
 
   // Anonymous public traffic (including `/` after a failed cookie attach) has no
   // session cookie. Skip getUser() to avoid noisy "Auth session missing!" logs.
@@ -93,6 +115,24 @@ export async function updateSession(request: NextRequest) {
         message: error.message,
         path: request.nextUrl.pathname,
         hasSessionCookie: true,
+        sessionCookieCount: sessionCookieNames.length,
+        sessionCookieNames,
+        hasUser: false,
+      });
+      const response = getResponse();
+      clearInvalidSessionCookies(response, sessionCookieNames);
+      return { response, user: null, supabase };
+    }
+    if (
+      request.nextUrl.pathname === "/" ||
+      request.nextUrl.pathname === "/dashboard" ||
+      request.nextUrl.pathname.startsWith("/dashboard/")
+    ) {
+      console.info("[auth.middleware] getUser ok", {
+        path: request.nextUrl.pathname,
+        hasUser: Boolean(user),
+        userId: user?.id ?? null,
+        sessionCookieCount: sessionCookieNames.length,
       });
     }
     return { response: getResponse(), user: user ?? null, supabase };
@@ -100,8 +140,11 @@ export async function updateSession(request: NextRequest) {
     console.warn("[auth.middleware] getUser threw", {
       error: error instanceof Error ? error.message : String(error),
       path: request.nextUrl.pathname,
+      sessionCookieNames,
     });
-    return { response: getResponse(), user: null, supabase };
+    const response = getResponse();
+    clearInvalidSessionCookies(response, sessionCookieNames);
+    return { response, user: null, supabase };
   }
 }
 
