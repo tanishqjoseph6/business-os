@@ -21,42 +21,33 @@ export function getSiteUrl(fallbackOrigin?: string): string {
 }
 
 /**
- * Resolve the public origin that should receive OAuth cookie redirects.
- * Prefer the request host/proto Vercel forwards; fall back to configured site URL.
+ * Origin used for OAuth callback redirects.
+ *
+ * CRITICAL: Must be the request host that served `/auth/callback`. Supabase
+ * session cookies are host-only. Rewriting www ↔ apex (or vercel.app ↔ custom
+ * domain) makes the browser store cookies on one host and then follow Location
+ * to another — middleware then logs "Auth session missing!" on `/`.
  */
 export function getCallbackOrigin(request: {
   nextUrl: { origin: string };
   headers: { get(name: string): string | null };
 }): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const forwardedHost = request.headers
+    .get("x-forwarded-host")
+    ?.split(",")[0]
+    ?.trim();
   const host = forwardedHost || request.headers.get("host");
   const proto =
     request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ||
     (process.env.NODE_ENV === "production" ? "https" : "http");
 
   if (host) {
-    const requestOrigin = `${proto}://${host}`.replace(/\/$/, "");
-    // Keep production cookies on the configured public domain when hosts match.
-    if (configured) {
-      try {
-        const configuredHost = new URL(configured).host;
-        const requestHost = new URL(requestOrigin).host;
-        if (
-          configuredHost === requestHost ||
-          configuredHost === `www.${requestHost}` ||
-          requestHost === `www.${configuredHost}`
-        ) {
-          return configured;
-        }
-      } catch {
-        // Fall through to the request origin.
-      }
-    }
-    return requestOrigin;
+    return `${proto}://${host}`.replace(/\/$/, "");
   }
 
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
   if (configured) return configured;
+
   return request.nextUrl.origin.replace(/\/$/, "");
 }
 

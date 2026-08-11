@@ -21,9 +21,10 @@ test("buildAuthCallbackUrl encodes next path", () => {
   );
 });
 
-test("getCallbackOrigin prefers configured public site for matching hosts", () => {
+test("getCallbackOrigin uses the request host, never rewrites www↔apex", () => {
   process.env.NEXT_PUBLIC_SITE_URL = "https://vanderbase.com";
-  const origin = getCallbackOrigin({
+
+  const apex = getCallbackOrigin({
     nextUrl: { origin: "https://vanderbase.com" },
     headers: {
       get(name: string) {
@@ -34,5 +35,19 @@ test("getCallbackOrigin prefers configured public site for matching hosts", () =
       },
     },
   });
-  assert.equal(origin, "https://vanderbase.com");
+  assert.equal(apex, "https://vanderbase.com");
+
+  const www = getCallbackOrigin({
+    nextUrl: { origin: "https://www.vanderbase.com" },
+    headers: {
+      get(name: string) {
+        if (name === "x-forwarded-host") return "www.vanderbase.com";
+        if (name === "x-forwarded-proto") return "https";
+        if (name === "host") return "www.vanderbase.com";
+        return null;
+      },
+    },
+  });
+  // Must stay on www so host-only cookies match Location.
+  assert.equal(www, "https://www.vanderbase.com");
 });

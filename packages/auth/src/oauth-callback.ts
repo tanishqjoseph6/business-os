@@ -13,19 +13,22 @@ function applySessionCookies(
   response: NextResponse,
   cookies: SessionCookie[],
 ): void {
+  // Preserve Supabase SSR cookie options exactly. Rewriting sameSite/secure/domain
+  // can make browsers drop the cookies before middleware ever sees them.
   cookies.forEach(({ name, value, options }) => {
-    response.cookies.set(name, value, {
-      path: "/",
-      sameSite: "lax",
-      ...options,
-      // OAuth completes over HTTPS in production; never weaken Secure.
-      ...(process.env.NODE_ENV === "production" ? { secure: true } : {}),
-    });
+    response.cookies.set(name, value, options);
   });
 }
 
 function cookieNames(cookies: SessionCookie[]): string[] {
   return cookies.map((cookie) => cookie.name);
+}
+
+function isAuthSessionCookieName(name: string): boolean {
+  return (
+    (name.includes("auth-token") || name.startsWith("sb-")) &&
+    !name.includes("code-verifier")
+  );
 }
 
 function hasCodeVerifier(request: NextRequest): boolean {
@@ -34,14 +37,22 @@ function hasCodeVerifier(request: NextRequest): boolean {
     .some((cookie) => cookie.name.includes("code-verifier"));
 }
 
+function responseAuthCookieCount(response: NextResponse): number {
+  return response.cookies
+    .getAll()
+    .filter((cookie) => isAuthSessionCookieName(cookie.name)).length;
+}
+
 /**
  * Supabase OAuth / magic-link callback for Next.js App Router.
  *
  * Cookies must be written onto the redirect response that is returned.
  * Dropping Set-Cookie headers leaves middleware with no user, so the visitor
- * falls back to the public landing page.
+ * falls back to the public landing page with "Auth session missing!".
  */
 export async function handleAuthCallback(request: NextRequest) {
+  // Must match the request host exactly so host-only cookies survive the
+  // redirect hop (never rewrite www ↔ apex here).
   const origin = getCallbackOrigin(request);
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
@@ -59,6 +70,7 @@ export async function handleAuthCallback(request: NextRequest) {
 
   console.info("[auth.callback] start", {
     origin,
+    requestOrigin: request.nextUrl.origin,
     path: request.nextUrl.pathname,
     next,
     hasCode: Boolean(code),
@@ -92,10 +104,6 @@ export async function handleAuthCallback(request: NextRequest) {
 
   const destination = new URL(next, origin);
   let sessionCookies: SessionCookie[] = [];
-  // Seed a redirect response and keep rewriting it inside setAll. Supabase
-  // SSR calls setAll during exchangeCodeForSession; cookies must land on the
-  // exact response object returned to the browser.
-  let redirectResponse = NextResponse.redirect(destination);
 
   const env = getPublicSupabaseEnv();
   const supabase = createSupabaseServerClient(
@@ -107,12 +115,11 @@ export async function handleAuthCallback(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
+          // Collect cookies during exchange; attach onto the final redirect only.
           sessionCookies = cookiesToSet;
           cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value);
           });
-          redirectResponse = NextResponse.redirect(destination);
-          applySessionCookies(redirectResponse, cookiesToSet);
         },
       },
     },
@@ -125,6 +132,7 @@ export async function handleAuthCallback(request: NextRequest) {
       message: error?.message ?? "missing session",
       hasCodeVerifier: hasCodeVerifier(request),
       next,
+      cookieCount: sessionCookies.length,
     });
     const message = error?.message ?? "";
     if (isPasswordReset) {
@@ -148,40 +156,59 @@ export async function handleAuthCallback(request: NextRequest) {
     return NextResponse.redirect(new URL("/signin?error=auth_callback", origin));
   }
 
-  // Ensure cookies are present even if setAll was invoked on a prior response.
+  // Edge case: session object returned but setAll never fired — rebind tokens
+  // so the cookie adapter writes sb-* auth cookies before we redirect.
+  if (sessionCookies.length === 0 && data.session) {
+    console.warn("[auth.callback] setAll missing after exchange — rebinding session");
+    const rebound = await supabase.auth.setSession({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    });
+    if (rebound.error) {
+      console.warn("[auth.callback] setSession rebind failed", {
+        message: rebound.error.message,
+      });
+    }
+  }
+
+  const redirectTarget =
+    isEmailVerification && data.user?.email_confirmed_at
+      ? (() => {
+          const verifiedDestination = new URL("/verify-email", origin);
+          verifiedDestination.searchParams.set("verified", "1");
+          if (data.user?.email) {
+            verifiedDestination.searchParams.set("email", data.user.email);
+          }
+          const preservedNext = sanitizeAuthNextPath(searchParams.get("next"));
+          if (preservedNext !== "/verify-email") {
+            verifiedDestination.searchParams.set("next", preservedNext);
+          }
+          return verifiedDestination;
+        })()
+      : destination;
+
+  const redirectResponse = NextResponse.redirect(redirectTarget);
   applySessionCookies(redirectResponse, sessionCookies);
   redirectResponse.headers.set("Cache-Control", "no-store");
 
-  if (sessionCookies.length === 0) {
-    console.error("[auth.callback] session created but no cookies were set", {
-      next,
-      userId: data.user?.id ?? null,
-      emailConfirmed: Boolean(data.user?.email_confirmed_at),
-    });
-  } else {
-    console.info("[auth.callback] session persisted", {
-      next,
-      userId: data.user?.id ?? null,
-      emailConfirmed: Boolean(data.user?.email_confirmed_at),
-      cookieCount: sessionCookies.length,
-      cookieNames: cookieNames(sessionCookies),
-    });
-  }
+  const attachedCount = responseAuthCookieCount(redirectResponse);
+  console.info("[auth.callback] session persisted", {
+    next: `${redirectTarget.pathname}${redirectTarget.search}`,
+    origin,
+    userId: data.user?.id ?? null,
+    emailConfirmed: Boolean(data.user?.email_confirmed_at),
+    cookieCount: sessionCookies.length,
+    attachedCount,
+    cookieNames: cookieNames(sessionCookies),
+  });
 
-  if (isEmailVerification && data.user?.email_confirmed_at) {
-    const verifiedDestination = new URL("/verify-email", origin);
-    verifiedDestination.searchParams.set("verified", "1");
-    if (data.user.email) {
-      verifiedDestination.searchParams.set("email", data.user.email);
-    }
-    const preservedNext = sanitizeAuthNextPath(searchParams.get("next"));
-    if (preservedNext !== "/verify-email") {
-      verifiedDestination.searchParams.set("next", preservedNext);
-    }
-    const nextResponse = NextResponse.redirect(verifiedDestination);
-    applySessionCookies(nextResponse, sessionCookies);
-    nextResponse.headers.set("Cache-Control", "no-store");
-    return nextResponse;
+  if (sessionCookies.length === 0 || attachedCount === 0) {
+    console.error("[auth.callback] session created but cookies missing on response", {
+      cookieCount: sessionCookies.length,
+      attachedCount,
+      next,
+    });
+    return NextResponse.redirect(new URL("/signin?error=auth_callback", origin));
   }
 
   return redirectResponse;

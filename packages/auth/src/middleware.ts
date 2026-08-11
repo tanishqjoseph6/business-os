@@ -63,8 +63,26 @@ function redirectForRequest(
   return redirect;
 }
 
+function hasSupabaseSessionCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some(
+      (cookie) =>
+        (cookie.name.includes("auth-token") || cookie.name.startsWith("sb-")) &&
+        !cookie.name.includes("code-verifier") &&
+        Boolean(cookie.value),
+    );
+}
+
 export async function updateSession(request: NextRequest) {
   const { supabase, getResponse } = createMiddlewareClient(request);
+
+  // Anonymous public traffic (including `/` after a failed cookie attach) has no
+  // session cookie. Skip getUser() to avoid noisy "Auth session missing!" logs.
+  if (!hasSupabaseSessionCookie(request)) {
+    return { response: getResponse(), user: null, supabase };
+  }
+
   try {
     const {
       data: { user },
@@ -74,6 +92,7 @@ export async function updateSession(request: NextRequest) {
       console.warn("[auth.middleware] getUser error", {
         message: error.message,
         path: request.nextUrl.pathname,
+        hasSessionCookie: true,
       });
     }
     return { response: getResponse(), user: user ?? null, supabase };
@@ -238,6 +257,9 @@ export function createWebMiddleware(options: MiddlewareAuthOptions = {}) {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
       url.search = "";
+      console.info("[auth.middleware] authenticated user on / — redirecting to dashboard", {
+        userId: user.id,
+      });
       return redirectForRequest(request, url, response);
     }
 
