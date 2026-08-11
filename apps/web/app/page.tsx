@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { getUser } from "@repo/auth/server";
 import { LandingPage } from "../components/landing/landing-page";
+import { AuthSessionBootstrap } from "../components/auth/auth-session-bootstrap";
 import "./landing.css";
 
 export const metadata: Metadata = {
@@ -41,6 +44,38 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-export default function HomePage() {
-  return <LandingPage />;
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const code = typeof params.code === "string" ? params.code : null;
+  const nextParam = typeof params.next === "string" ? params.next : "/dashboard";
+  const safeNext =
+    nextParam.startsWith("/") && !nextParam.startsWith("//")
+      ? nextParam
+      : "/dashboard";
+
+  // If Supabase falls back to Site URL (/) with a PKCE code, recover here even
+  // when middleware forwarding is skipped/misordered.
+  if (code) {
+    const callback = new URLSearchParams({
+      code,
+      next: safeNext,
+    });
+    redirect(`/auth/callback?${callback.toString()}`);
+  }
+
+  const user = await getUser();
+  if (user) {
+    redirect("/dashboard");
+  }
+
+  return (
+    <>
+      <AuthSessionBootstrap />
+      <LandingPage />
+    </>
+  );
 }

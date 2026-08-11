@@ -4,7 +4,8 @@ import { getPublicSupabaseEnv } from "@repo/database/env";
 import { writeSecurityAuditLog } from "@repo/database/security";
 
 async function signOutWithResponse(request: NextRequest) {
-  const destination = new URL("/signin", request.nextUrl.origin);
+  // Requirement: logout clears the session and returns to the landing page.
+  const destination = new URL("/", request.nextUrl.origin);
   const response = NextResponse.redirect(destination, { status: 303 });
 
   const env = getPublicSupabaseEnv();
@@ -18,7 +19,10 @@ async function signOutWithResponse(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
+            response.cookies.set(name, value, {
+              path: "/",
+              ...options,
+            });
           });
         },
       },
@@ -28,11 +32,20 @@ async function signOutWithResponse(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    console.warn("[auth.signout] signOut failed", { message: error.message });
+  } else {
+    console.info("[auth.signout] session cleared", {
+      hadUser: Boolean(user),
+      userId: user?.id ?? null,
+    });
+  }
   if (user) {
     await writeSecurityAuditLog({ actorUserId: user.id, eventType: "logout" });
   }
 
+  response.headers.set("Cache-Control", "no-store");
   return response;
 }
 

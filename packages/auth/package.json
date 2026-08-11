@@ -16,7 +16,8 @@
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test scripts/auth-url.test.ts"
   },
   "dependencies": {
     "@repo/config": "*",

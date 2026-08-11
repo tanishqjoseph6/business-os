@@ -55,10 +55,16 @@ export async function signInWithGoogle(
   const supabase = createBrowserClient();
   const callbackUrl =
     redirectTo ?? buildAuthCallbackUrl(nextPath, getSiteUrl());
+  console.info("[auth.google] starting OAuth", {
+    redirectTo: callbackUrl,
+    nextPath,
+  });
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo: callbackUrl,
+      // Explicit PKCE — requires /auth/callback to exchange the code server-side.
+      skipBrowserRedirect: false,
       queryParams: {
         access_type: "offline",
         prompt: "consent",
@@ -67,6 +73,10 @@ export async function signInWithGoogle(
   });
 
   if (error) {
+    console.warn("[auth.google] signInWithOAuth failed", {
+      message: error.message,
+      redirectTo: callbackUrl,
+    });
     throw new Error(error.message);
   }
 

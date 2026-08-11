@@ -112,6 +112,13 @@ export function createWebMiddleware(options: MiddlewareAuthOptions = {}) {
       if (!url.searchParams.has("next")) {
         url.searchParams.set("next", "/dashboard");
       }
+      console.info("[auth.middleware] forwarding OAuth code to callback", {
+        from: pathname,
+        next: url.searchParams.get("next"),
+        hasCodeVerifier: request.cookies
+          .getAll()
+          .some((cookie) => cookie.name.includes("code-verifier")),
+      });
       return NextResponse.redirect(url);
     }
 
