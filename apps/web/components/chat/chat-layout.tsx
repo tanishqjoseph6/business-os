@@ -4,7 +4,7 @@ import * as React from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@repo/ui/button";
 import { IconMenu } from "@repo/ui/icons";
-import { CheckCircle2, Loader2, TriangleAlert, XCircle } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import type { ChatConversation, ChatMessage } from "@repo/types";
 import type { ChatModelOption } from "@repo/ai";
 import type { AiProviderId } from "@repo/ai";
@@ -18,12 +18,21 @@ import {
 import { streamChatRequest } from "../../lib/chat-stream";
 import { executeKairosActionRequest } from "../../lib/kairos-actions-client";
 import type { KairosActionResponse } from "../../lib/kairos-actions/types";
-import { KairosCompanion } from "../kairos/kairos-companion";
 import { deriveKairosChatState } from "../kairos/use-kairos-state";
+import { KairosAvatar } from "../kairos/kairos-avatar";
+import { KAIROS_TAGLINE } from "../../lib/kairos";
 import { ChatSidebar } from "./chat-sidebar";
 import { Composer } from "./composer";
 import { EmptyState } from "./empty-state";
 import { MessageList } from "./message-list";
+import {
+  ActionExecutionPanel,
+  buildExecutionSteps,
+} from "./action-execution-panel";
+import {
+  timelineToToolActivity,
+  type ToolActivity,
+} from "./structured-response";
 
 type ChatLayoutProps = {
   initialConversations: ChatConversation[];
@@ -68,8 +77,16 @@ type ActionTimelineItem = {
 
 function summarizeActionResult(result: KairosActionResponse): string {
   if (result.status === "completed") {
+    const payload = result.result;
+    if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+      try {
+        return JSON.stringify(payload, null, 2);
+      } catch {
+        // fall through
+      }
+    }
     const body = JSON.stringify(result.result);
-    return `${result.action.label} completed via \`${result.action.tool}\`.\n${body.length > 600 ? `${body.slice(0, 600)}…` : body}`;
+    return `${result.action.label} completed via ${result.action.tool}.\n${body.length > 600 ? `${body.slice(0, 600)}…` : body}`;
   }
   if (result.status === "confirmation_required") {
     return `Confirmation required for ${result.action?.label ?? "this action"}.`;
@@ -129,6 +146,12 @@ export function ChatLayout({
     title: string;
     body: string;
   } | null>(null);
+  const [lastToolActivity, setLastToolActivity] = React.useState<ToolActivity[]>(
+    [],
+  );
+  const [lastActionMessageId, setLastActionMessageId] = React.useState<
+    string | null
+  >(null);
   const abortRef = React.useRef<AbortController | null>(null);
   const searchTimer = React.useRef<number | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
@@ -196,6 +219,8 @@ export function ChatLayout({
     setActionTimeline([]);
     setActionPhase(null);
     setPendingConfirmation(null);
+    setLastToolActivity([]);
+    setLastActionMessageId(null);
   }
 
   async function runKairosAction(input: {
@@ -261,14 +286,16 @@ export function ChatLayout({
       }
 
       const summary = summarizeActionResult(result);
-      setMessages((prev) => [
-        ...prev,
-        createLocalMessage({
-          role: "assistant",
-          content: summary,
-          conversationId: activeId ?? "kairos-actions",
-        }),
-      ]);
+      const assistantMessage = createLocalMessage({
+        role: "assistant",
+        content: summary,
+        conversationId: activeId ?? "kairos-actions",
+      });
+      setMessages((prev) => [...prev, assistantMessage]);
+      setLastActionMessageId(assistantMessage.id);
+      setLastToolActivity(
+        timelineToToolActivity(result.timeline as ActionTimelineItem[]),
+      );
       setDraft("");
       setKairosPhase("success");
       setActionPhase("completed");
@@ -436,6 +463,24 @@ export function ChatLayout({
     await runStream({ message: text, conversationId: activeId });
   }
 
+  async function handleSuggestion(text: string) {
+    if (!text.trim() || isStreaming || actionPhase === "thinking" || actionPhase === "executing") {
+      return;
+    }
+    setDraft(text);
+    setKairosPhase(null);
+    if (isLikelyActionCommand(text)) {
+      const actionOutcome = await runKairosAction({ command: text });
+      if (actionOutcome === "handled") return;
+    }
+    await runStream({ message: text, conversationId: activeId });
+  }
+
+  async function handleSmartAction(prompt: string) {
+    setDraft(prompt);
+    await handleSuggestion(prompt);
+  }
+
   async function handleRetry() {
     if (!lastAttempt || isStreaming || actionPhase === "thinking" || actionPhase === "executing") return;
     await runStream(lastAttempt);
@@ -518,12 +563,21 @@ export function ChatLayout({
     phase: kairosPhase,
   });
 
+  const executionSteps = buildExecutionSteps({
+    phase: actionPhase,
+    timeline: actionTimeline,
+  });
+
+  const toolActivityByMessageId = lastActionMessageId
+    ? { [lastActionMessageId]: lastToolActivity }
+    : {};
+
   return (
     <div
       className={
         variant === "panel"
-          ? "flex h-full overflow-hidden"
-          : "-mx-4 -my-4 flex h-[calc(100vh-3.5rem)] overflow-hidden sm:-mx-6 lg:-mx-8 lg:h-[calc(100vh-4rem)]"
+          ? "flex h-full min-h-0 overflow-hidden"
+          : "flex h-full min-h-0 flex-1 overflow-hidden"
       }
     >
       <ChatSidebar
@@ -539,54 +593,51 @@ export function ChatLayout({
         onPin={handlePin}
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
+        kairosState={kairosState}
+        isOnline={isOnline}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col bg-background">
-        {variant === "page" ? (
-          <header className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-6">
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="lg:hidden"
-                onClick={() => setMobileOpen(true)}
-              >
-                <IconMenu />
-              </Button>
-              <div>
-                <h1 className="text-sm font-semibold text-foreground">
-                  {activeId
-                    ? conversations.find((c) => c.id === activeId)?.title ?? "Chat"
-                    : "Ask Kairos"}
-                </h1>
-                {usageLabel ? (
-                  <p className="text-xs text-muted">{usageLabel}</p>
-                ) : null}
-              </div>
-            </div>
-          </header>
-        ) : (
-          <header className="flex items-center justify-between border-b border-border px-4 py-2.5 sm:px-4 lg:hidden">
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-[radial-gradient(circle_at_top,rgba(255,122,0,0.08),transparent_34%),#0b0b10]">
+        <header className="flex shrink-0 items-center justify-between border-b border-border/70 bg-[#0f0f15]/80 px-4 py-3 backdrop-blur sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <Button
               type="button"
               variant="ghost"
               size="sm"
+              className="lg:hidden"
               onClick={() => setMobileOpen(true)}
             >
               <IconMenu />
             </Button>
-            {usageLabel ? <p className="text-xs text-muted">{usageLabel}</p> : <span />}
-          </header>
-        )}
+            <KairosAvatar size="xs" state={kairosState} aria-label="Kairos" />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-sm font-semibold text-foreground">
+                  {activeId
+                    ? conversations.find((c) => c.id === activeId)?.title ?? "Kairos"
+                    : "Kairos"}
+                </h1>
+                <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
+                  {isOnline ? "Ready" : "Offline"}
+                </span>
+              </div>
+              <p className="truncate text-xs text-muted">
+                {usageLabel ?? KAIROS_TAGLINE}
+              </p>
+            </div>
+          </div>
+          <p className="hidden text-xs text-muted sm:block">
+            {creditBalance.toLocaleString()} credits
+          </p>
+        </header>
 
         {!isOnline ? (
-          <div className="border-b border-warning/30 bg-warning/10 px-4 py-2 text-sm text-warning sm:px-6" role="status">
+          <div className="shrink-0 border-b border-warning/30 bg-warning/10 px-4 py-2 text-sm text-warning sm:px-6" role="status">
             You&apos;re offline. Kairos will be ready when your connection returns.
           </div>
         ) : null}
         {error ? (
-          <div className="flex items-center justify-between gap-3 border-b border-error/30 bg-error/10 px-4 py-2 text-sm text-error sm:px-6" role="alert">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-error/30 bg-error/10 px-4 py-2 text-sm text-error sm:px-6" role="alert">
             <span>{error}</span>
             {lastAttempt ? (
               <Button type="button" variant="secondary" size="sm" onClick={() => void handleRetry()} disabled={!isOnline || isStreaming}>
@@ -595,24 +646,8 @@ export function ChatLayout({
             ) : null}
           </div>
         ) : null}
-        {actionPhase ? (
-          <div className="flex items-center gap-2 border-b border-border/70 bg-surface px-4 py-2 text-sm sm:px-6" role="status">
-            {actionPhase === "thinking" || actionPhase === "executing" ? (
-              <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden />
-            ) : null}
-            {actionPhase === "completed" ? (
-              <CheckCircle2 className="h-4 w-4 animate-pulse text-success" aria-hidden />
-            ) : null}
-            {actionPhase === "failed" ? (
-              <XCircle className="h-4 w-4 text-error" aria-hidden />
-            ) : null}
-            <span className="font-medium text-foreground">
-              Kairos action {actionStatusLabel?.toLowerCase() ?? "running"}...
-            </span>
-          </div>
-        ) : null}
         {pendingConfirmation ? (
-          <div className="border-b border-warning/30 bg-warning/10 px-4 py-3 sm:px-6">
+          <div className="shrink-0 border-b border-warning/30 bg-warning/10 px-4 py-3 sm:px-6">
             <div className="flex items-start gap-3">
               <TriangleAlert className="mt-0.5 h-4 w-4 text-warning" aria-hidden />
               <div className="flex-1 space-y-2">
@@ -635,35 +670,27 @@ export function ChatLayout({
             </div>
           </div>
         ) : null}
-        {actionTimeline.length > 0 ? (
-          <div className="border-b border-border/70 bg-muted/20 px-4 py-2 sm:px-6">
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-              Action Timeline
-            </p>
-            <div className="space-y-1">
-              {actionTimeline.slice(0, 3).map((item) => (
-                <p key={item.id} className="text-xs text-secondary">
-                  {new Date(item.timestamp).toLocaleTimeString()} · {item.tool} · {item.status} · {item.result}
-                </p>
-              ))}
-            </div>
+
+        {(actionPhase || executionSteps.length > 0) && actionPhase ? (
+          <div className="shrink-0">
+            <ActionExecutionPanel
+              phase={actionPhase}
+              steps={executionSteps}
+              title={
+                actionPhase === "thinking"
+                  ? "Kairos is thinking…"
+                  : "Kairos is working…"
+              }
+            />
           </div>
         ) : null}
 
-        <div className="flex flex-1 overflow-hidden">
-          <aside className="bos-glass hidden w-44 shrink-0 flex-col items-center border-r border-border/60 px-3 py-6 lg:flex xl:w-52">
-            <KairosCompanion
-              state={kairosState}
-              showWelcome={messages.length === 0 && !isStreaming}
-              compact
-            />
-          </aside>
-          <div ref={scrollRef} className="flex-1 overflow-y-auto">
-          {messages.length === 0 && !isStreaming ? (
+        <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {messages.length === 0 && !isStreaming && !actionPhase ? (
             <EmptyState
               kairosState={kairosState}
               onSuggestion={(text) => {
-                setDraft(text);
+                void handleSuggestion(text);
               }}
             />
           ) : (
@@ -684,26 +711,36 @@ export function ChatLayout({
               isStreaming={isStreaming}
               onRegenerate={handleRegenerate}
               kairosState={kairosState}
+              toolActivityByMessageId={toolActivityByMessageId}
+              onSmartAction={(prompt) => {
+                void handleSmartAction(prompt);
+              }}
+              smartActionsDisabled={
+                isStreaming ||
+                actionPhase === "thinking" ||
+                actionPhase === "executing"
+              }
             />
           )}
-          </div>
         </div>
 
-        <Composer
-          value={draft}
-          onChange={setDraft}
-          onSubmit={handleSubmit}
-          onStop={handleStop}
-          disabled={!isOnline}
-          isStreaming={isStreaming}
-          models={models}
-          model={model}
-          provider={provider}
-          onModelChange={(nextModel, nextProvider) => {
-            setModel(nextModel);
-            setProvider(nextProvider);
-          }}
-        />
+        <div className="shrink-0">
+          <Composer
+            value={draft}
+            onChange={setDraft}
+            onSubmit={handleSubmit}
+            onStop={handleStop}
+            disabled={!isOnline}
+            isStreaming={isStreaming}
+            models={models}
+            model={model}
+            provider={provider}
+            onModelChange={(nextModel, nextProvider) => {
+              setModel(nextModel);
+              setProvider(nextProvider);
+            }}
+          />
+        </div>
       </div>
     </div>
   );

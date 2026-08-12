@@ -11,6 +11,15 @@ import { cn } from "@repo/ui/utils";
 import type { ChatMessage } from "@repo/types";
 import type { KairosState } from "../../lib/kairos";
 import { KairosAvatar } from "../kairos/kairos-avatar";
+import {
+  extractMetricsFromContent,
+  inferSmartActions,
+  MetricsCard,
+  SmartActionBar,
+  ToolActivityList,
+  type ToolActivity,
+} from "./structured-response";
+import { ClientTime } from "./client-time";
 
 type MessageProps = {
   message: ChatMessage;
@@ -18,6 +27,9 @@ type MessageProps = {
   onRegenerate?: () => void;
   canRegenerate?: boolean;
   kairosState?: KairosState;
+  toolActivity?: ToolActivity[];
+  onSmartAction?: (prompt: string) => void;
+  smartActionsDisabled?: boolean;
 };
 
 function CodeBlock({
@@ -76,9 +88,17 @@ export function Message({
   onRegenerate,
   canRegenerate,
   kairosState = "idle",
+  toolActivity = [],
+  onSmartAction,
+  smartActionsDisabled,
 }: MessageProps) {
   const isUser = message.role === "user";
   const [copied, setCopied] = React.useState(false);
+  const metrics = !isUser ? extractMetricsFromContent(message.content) : null;
+  const smartActions =
+    !isUser && !isStreaming && message.content.trim()
+      ? inferSmartActions(message.content)
+      : [];
 
   async function copyMessage() {
     if (!message.content.trim()) return;
@@ -90,79 +110,110 @@ export function Message({
   return (
     <div
       className={cn(
-        "group flex w-full gap-4 px-4 py-5 sm:px-6",
-        isUser ? "bg-transparent" : "bg-surface/30",
+        "group flex w-full gap-3 px-4 py-5 sm:gap-4 sm:px-6",
+        isUser ? "justify-end bg-transparent" : "bg-transparent",
       )}
     >
-      <div className="shrink-0">
-        {isUser ? (
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-elevated text-xs font-semibold text-secondary">
-            You
-          </div>
-        ) : (
+      {!isUser ? (
+        <div className="shrink-0 pt-0.5">
           <KairosAvatar
             size="xs"
             state={isStreaming ? "speaking" : kairosState}
             aria-label="Kairos"
           />
-        )}
-      </div>
-      <div className="min-w-0 flex-1 space-y-2">
-        <div className="prose prose-invert max-w-none text-sm leading-relaxed text-foreground/95 prose-headings:font-semibold prose-headings:text-foreground prose-p:text-foreground/90 prose-a:text-accent prose-code:rounded prose-code:bg-elevated prose-code:px-1.5 prose-code:py-0.5 prose-code:text-[13px] prose-pre:p-0 prose-pre:bg-transparent">
-          {isUser ? (
-            <p className="whitespace-pre-wrap">{message.content}</p>
-          ) : (
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                code({ className, children, ...props }) {
-                  const inline = !className;
-                  if (inline) {
-                    return (
-                      <code className={className} {...props}>
-                        {children}
-                      </code>
-                    );
-                  }
-                  return <CodeBlock className={className}>{children}</CodeBlock>;
-                },
-              }}
-            >
-              {message.content || (isStreaming ? " " : "")}
-            </ReactMarkdown>
-          )}
         </div>
-        <time
-          dateTime={message.createdAt}
-          className="text-[10px] text-muted/70"
-          title={new Date(message.createdAt).toLocaleString()}
+      ) : null}
+
+      <div
+        className={cn(
+          "min-w-0 space-y-2",
+          isUser ? "max-w-[85%] sm:max-w-[70%]" : "flex-1",
+        )}
+      >
+        {!isUser ? (
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary/90">
+            Kairos
+          </p>
+        ) : null}
+
+        <div
+          className={cn(
+            isUser
+              ? "rounded-2xl rounded-br-md border border-primary/20 bg-primary/15 px-4 py-3 text-sm leading-6 text-foreground"
+              : "rounded-2xl border border-border/70 bg-[#12121a]/80 px-4 py-3 shadow-soft",
+          )}
         >
-          {new Date(message.createdAt).toLocaleTimeString([], {
-            hour: "numeric",
-            minute: "2-digit",
-          })}
-        </time>
-        <div className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
-          {!isUser && message.content.trim() ? (
-            <Button type="button" variant="ghost" size="sm" onClick={copyMessage}>
-              {copied ? (
-                <>
-                  <Check className="h-3.5 w-3.5" aria-hidden />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3.5 w-3.5" aria-hidden />
-                  Copy
-                </>
-              )}
-            </Button>
+          <div className="prose prose-invert max-w-none text-sm leading-relaxed text-foreground/95 prose-headings:font-semibold prose-headings:text-foreground prose-p:text-foreground/90 prose-a:text-accent prose-code:rounded prose-code:bg-elevated prose-code:px-1.5 prose-code:py-0.5 prose-code:text-[13px] prose-pre:p-0 prose-pre:bg-transparent">
+            {isUser ? (
+              <p className="m-0 whitespace-pre-wrap">{message.content}</p>
+            ) : metrics ? (
+              <p className="m-0 text-secondary">
+                Here&apos;s a structured snapshot based on your workspace request.
+              </p>
+            ) : (
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  code({ className, children, ...props }) {
+                    const inline = !className;
+                    if (inline) {
+                      return (
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      );
+                    }
+                    return <CodeBlock className={className}>{children}</CodeBlock>;
+                  },
+                }}
+              >
+                {message.content || (isStreaming ? " " : "")}
+              </ReactMarkdown>
+            )}
+          </div>
+
+          {!isUser && metrics ? (
+            <MetricsCard title={metrics.title} metrics={metrics.metrics} />
           ) : null}
-          {!isUser && canRegenerate && onRegenerate ? (
-            <Button type="button" variant="ghost" size="sm" onClick={onRegenerate}>
-              Regenerate
-            </Button>
+          {!isUser && toolActivity.length > 0 ? (
+            <ToolActivityList items={toolActivity} />
           ) : null}
+          {!isUser && onSmartAction ? (
+            <SmartActionBar
+              actions={smartActions}
+              onAction={onSmartAction}
+              disabled={smartActionsDisabled}
+            />
+          ) : null}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <ClientTime
+            iso={message.createdAt}
+            className="text-[10px] text-muted/70"
+          />
+          <div className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
+            {!isUser && message.content.trim() ? (
+              <Button type="button" variant="ghost" size="sm" onClick={copyMessage}>
+                {copied ? (
+                  <>
+                    <Check className="h-3.5 w-3.5" aria-hidden />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5" aria-hidden />
+                    Copy
+                  </>
+                )}
+              </Button>
+            ) : null}
+            {!isUser && canRegenerate && onRegenerate ? (
+              <Button type="button" variant="ghost" size="sm" onClick={onRegenerate}>
+                Regenerate
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

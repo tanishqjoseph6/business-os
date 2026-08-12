@@ -10,9 +10,8 @@ export function KairosFab() {
   return (
     <motion.div
       className="fixed bottom-5 left-5 z-30 sm:bottom-6 sm:left-6"
-      initial={{ opacity: 0, scale: 0.9, y: 8 }}
+      initial={false}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 320, damping: 26, delay: 0.4 }}
     >
       <button
         type="button"

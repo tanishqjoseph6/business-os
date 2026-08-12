@@ -52,6 +52,8 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const pathname = usePathname();
+  const isFullBleedChat =
+    pathname === "/chat" || pathname.startsWith("/chat/");
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
 
@@ -115,8 +117,13 @@ export function AppShell({
   }
 
   return (
-    <div className="bos-atmosphere min-h-screen text-foreground">
-      <div className="flex min-h-screen">
+    <div
+      className={cn(
+        "bos-atmosphere text-foreground",
+        isFullBleedChat ? "h-svh overflow-hidden" : "min-h-screen",
+      )}
+    >
+      <div className={cn("flex", isFullBleedChat ? "h-full" : "min-h-screen")}>
         <aside
           className={cn(
             "bos-glass bos-noise relative hidden shrink-0 flex-col border-r border-border/80 lg:flex",
@@ -226,8 +233,13 @@ export function AppShell({
           </div>
         ) : null}
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="bos-glass sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-border/60 px-3 sm:gap-3 sm:px-4">
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 flex-col",
+            isFullBleedChat && "min-h-0 overflow-hidden",
+          )}
+        >
+          <header className="bos-glass sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/60 px-3 sm:gap-3 sm:px-4">
             <Button
               variant="ghost"
               size="sm"
@@ -249,8 +261,23 @@ export function AppShell({
             </form>
           </header>
 
-          <main className="relative flex-1 p-4 pb-24 sm:p-6 lg:p-8 lg:pb-8">
-            <div className="pbos-animate-rise">{children}</div>
+          <main
+            className={cn(
+              "relative flex-1",
+              isFullBleedChat
+                ? "flex min-h-0 flex-col overflow-hidden p-0 pb-[4.75rem] lg:pb-0"
+                : "p-4 pb-24 sm:p-6 lg:p-8 lg:pb-8",
+            )}
+          >
+            <div
+              className={cn(
+                isFullBleedChat
+                  ? "flex min-h-0 flex-1 flex-col"
+                  : "pbos-animate-rise",
+              )}
+            >
+              {children}
+            </div>
           </main>
         </div>
       </div>

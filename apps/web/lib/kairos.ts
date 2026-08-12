@@ -15,9 +15,9 @@ export const KAIROS_THINKING_MESSAGES = [
 ] as const;
 
 export const KAIROS_WELCOME = {
-  greeting: "Hi! I'm Kairos.",
-  subtitle: "Your AI Business Copilot.",
-  body: "I can help with CRM, Email, Content, Analytics, Automations, Marketing and much more.",
+  greeting: "Tell Kairos what needs to get done.",
+  subtitle: "Your AI Business Copilot",
+  body: "Your AI business copilot can analyze, create, schedule, organize and execute across VanderBase.",
 } as const;
 
 export const KAIROS_TAGLINE = "Your AI Business Copilot";

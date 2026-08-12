@@ -9,6 +9,7 @@ import {
 } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { KAIROS_THINKING_MESSAGES, type KairosState } from "../../lib/kairos";
+import { useMounted } from "../../lib/use-mounted";
 import "./kairos.css";
 
 const SIZE_MAP = {
@@ -34,7 +35,9 @@ export function KairosAvatar({
   className = "",
   "aria-label": ariaLabel = "Kairos AI copilot",
 }: KairosAvatarProps) {
+  const mounted = useMounted();
   const reduced = useReducedMotion();
+  const animationsEnabled = mounted && !reduced;
   const px = SIZE_MAP[size];
   const [blink, setBlink] = useState(false);
   const [thinkIndex, setThinkIndex] = useState(0);
@@ -133,33 +136,35 @@ export function KairosAvatar({
 
       <motion.div
         className="kairos-gpu relative h-full w-full"
+        initial={false}
         style={{
-          rotateX: interactive && !reduced ? tiltX : 0,
-          rotateY: interactive && !reduced ? tiltY : 0,
+          rotateX: interactive && animationsEnabled ? tiltX : 0,
+          rotateY: interactive && animationsEnabled ? tiltY : 0,
           transformPerspective: 600,
         }}
         animate={
-          reduced
-            ? undefined
-            : {
+          animationsEnabled
+            ? {
                 y: state === "idle" ? [0, -3, 0] : isSpeaking ? [0, -1, 0] : 0,
                 scale: state === "idle" ? [1, 1.03, 1] : isSuccess ? [1, 1.04, 1] : 1,
               }
+            : false
         }
         transition={
-          reduced
-            ? undefined
-            : {
+          animationsEnabled
+            ? {
                 duration: state === "idle" ? 4.8 : 2.4,
                 repeat: state === "idle" || isSpeaking ? Infinity : 0,
                 ease: "easeInOut",
               }
+            : undefined
         }
       >
-        {!reduced ? (
+        {animationsEnabled ? (
           <motion.div
             aria-hidden
             className="pointer-events-none absolute inset-[-18%] rounded-full"
+            initial={false}
             style={{
               background: `radial-gradient(circle, rgba(249,115,22,${palette.ambient + 0.08}), transparent 68%)`,
             }}
@@ -201,7 +206,8 @@ export function KairosAvatar({
             strokeOpacity={palette.halo}
             strokeWidth="1"
             strokeDasharray="4 7"
-            animate={reduced ? undefined : { rotate: 360 }}
+            initial={false}
+            animate={animationsEnabled ? { rotate: 360 } : false}
             transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
             style={{ transformOrigin: "60px 58px" }}
           />
@@ -217,14 +223,15 @@ export function KairosAvatar({
               strokeWidth="1.5"
               strokeDasharray="18 12"
               strokeLinecap="round"
-              animate={reduced ? undefined : { rotate: 360 }}
+              initial={false}
+              animate={animationsEnabled ? { rotate: 360 } : false}
               transition={{ duration: 2.8, repeat: Infinity, ease: "linear" }}
               style={{ transformOrigin: "60px 60px", opacity: 0.85 }}
             />
           ) : null}
 
           {/* Particles */}
-          {!reduced
+          {animationsEnabled
             ? [0, 60, 120, 180, 240, 300].map((angle, index) => {
                 const rad = (angle * Math.PI) / 180;
                 const radius = isThinking ? 44 : 38;
@@ -232,6 +239,7 @@ export function KairosAvatar({
                   <motion.circle
                     key={angle}
                     className="kairos-particle"
+                    initial={false}
                     r={index % 2 === 0 ? 1.6 : 1.1}
                     fill={palette.core}
                     fillOpacity={0.75}
@@ -254,11 +262,11 @@ export function KairosAvatar({
             : null}
 
           {/* Neural lines — thinking */}
-          {isThinking && !reduced ? (
+          {isThinking && animationsEnabled ? (
             <g opacity="0.35">
-              <motion.line x1="34" y1="42" x2="60" y2="28" stroke={palette.ring} strokeWidth="0.8" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8 }} />
-              <motion.line x1="86" y1="42" x2="60" y2="28" stroke={palette.ring} strokeWidth="0.8" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.1 }} />
-              <motion.line x1="42" y1="78" x2="78" y2="78" stroke={palette.ring} strokeWidth="0.8" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.15 }} />
+              <motion.line x1="34" y1="42" x2="60" y2="28" stroke={palette.ring} strokeWidth="0.8" initial={false} animate={{ pathLength: 1 }} transition={{ duration: 0.8 }} />
+              <motion.line x1="86" y1="42" x2="60" y2="28" stroke={palette.ring} strokeWidth="0.8" initial={false} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.1 }} />
+              <motion.line x1="42" y1="78" x2="78" y2="78" stroke={palette.ring} strokeWidth="0.8" initial={false} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.15 }} />
             </g>
           ) : null}
 
@@ -288,6 +296,7 @@ export function KairosAvatar({
             return (
               <motion.g
                 key={side}
+                initial={false}
                 animate={{
                   y: eyeYOffset,
                   x: eyeXFocus * (side === "left" ? -1 : 1),
@@ -309,17 +318,18 @@ export function KairosAvatar({
               stroke="rgba(255,255,255,0.72)"
               strokeWidth="1.4"
               strokeLinecap="round"
+              initial={false}
               animate={
                 isSuccess
                   ? { d: "M48 72 Q60 79 72 72" }
                   : isError
                     ? { d: "M49 74 Q60 71 71 74" }
-                    : isSpeaking && !reduced
+                    : isSpeaking && animationsEnabled
                       ? { d: ["M50 72 Q60 74 70 72", "M50 73 Q60 71 70 73", "M50 72 Q60 74 70 72"] }
                       : { d: "M50 72 Q60 74 70 72" }
               }
               transition={
-                isSpeaking && !reduced
+                isSpeaking && animationsEnabled
                   ? { duration: 0.55, repeat: Infinity, ease: "easeInOut" }
                   : { duration: 0.35 }
               }
@@ -327,7 +337,7 @@ export function KairosAvatar({
           ) : null}
 
           {/* Success sparkles */}
-          {isSuccess && !reduced
+          {isSuccess && animationsEnabled
             ? [
                 [44, 34],
                 [76, 36],
@@ -339,6 +349,7 @@ export function KairosAvatar({
                   cy={y}
                   r="1.4"
                   fill="#fcd34d"
+                  initial={false}
                   animate={{ opacity: [0, 1, 0], scale: [0.6, 1.2, 0.6] }}
                   transition={{ duration: 1.4, repeat: Infinity, delay: index * 0.22 }}
                 />
@@ -358,23 +369,23 @@ export function KairosAvatar({
 
 export function KairosThinkingMessage({ state }: { state: KairosState }) {
   const [index, setIndex] = useState(0);
+  const mounted = useMounted();
   const reduced = useReducedMotion();
 
   useEffect(() => {
-    if (state !== "thinking") return;
-    if (reduced) return;
+    if (!mounted || state !== "thinking" || reduced) return;
     const timer = window.setInterval(() => {
       setIndex((value) => (value + 1) % KAIROS_THINKING_MESSAGES.length);
     }, 2200);
     return () => window.clearInterval(timer);
-  }, [reduced, state]);
+  }, [mounted, reduced, state]);
 
   if (state !== "thinking") return null;
 
   return (
     <motion.p
       key={index}
-      initial={{ opacity: 0, y: 4 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
       className="text-xs text-secondary"
       aria-live="polite"
