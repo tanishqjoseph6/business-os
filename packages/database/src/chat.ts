@@ -97,7 +97,7 @@ export async function createConversation(input: {
       workspace_id: input.workspaceId,
       user_id: input.userId,
       title: input.title ?? "New chat",
-      model: input.model ?? "gpt-4o-mini",
+      model: input.model ?? "auto",
       provider: input.provider ?? "openai",
     })
     .select("*")

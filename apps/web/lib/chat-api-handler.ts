@@ -21,6 +21,8 @@ import {
   getKairosMemoryContext,
   rememberKairosSessionContext,
 } from "@repo/database";
+import { getWorkspacePlan } from "@repo/database/billing";
+import { authorizeKairosChatModel } from "@repo/ai/chat/kairos-models";
 import { chatStreamRequestSchema } from "@repo/types";
 import type { WorkspaceMembership } from "@repo/types";
 import { resolveActiveWorkspace } from "./workspace-context";
@@ -138,6 +140,22 @@ export async function handleChatStreamRequest(
     );
   }
 
+  const plan = await getWorkspacePlan({
+    workspaceId: context.active.workspace.id,
+    userId: user.id,
+  });
+  const authorized = authorizeKairosChatModel(plan, parsed.data.model);
+  if (!authorized.ok) {
+    return Response.json(
+      {
+        error: authorized.message,
+        code: authorized.code,
+        requiredPlan: authorized.requiredPlan,
+      },
+      { status: 403 },
+    );
+  }
+
   if (!providerConfigured()) {
     return Response.json(
       {
@@ -173,8 +191,9 @@ export async function handleChatStreamRequest(
       userId: user.id,
       conversationId: parsed.data.conversationId,
       message: parsed.data.message,
-      model: parsed.data.model,
+      model: authorized.model,
       provider: parsed.data.provider,
+      plan,
       regenerate: parsed.data.regenerate,
       kairosContext: parsed.data.kairosContext,
     });

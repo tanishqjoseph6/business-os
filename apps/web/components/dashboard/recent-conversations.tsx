@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Badge } from "@repo/ui/badge";
 import type { DashboardSnapshot } from "@repo/types";
 import { KairosAvatar } from "../kairos/kairos-avatar";
-import { formatRelative } from "./format";
+import { ClientRelativeTime } from "./client-relative-time";
 import { EmptyState, SectionShell } from "./section-shell";
 
 export function RecentConversations({
@@ -46,7 +46,7 @@ export function RecentConversations({
                   </span>
                   <span className="mt-1 block text-xs text-muted">
                     {conversation.provider} · {conversation.model} ·{" "}
-                    {formatRelative(conversation.updatedAt)}
+                    <ClientRelativeTime iso={conversation.updatedAt} />
                   </span>
                 </span>
               </Link>

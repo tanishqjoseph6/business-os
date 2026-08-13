@@ -10,7 +10,7 @@ export function TodaysAgenda({ snapshot }: { snapshot: DashboardSnapshot }) {
     <SectionShell
       title="Today's Agenda"
       description="Tasks and meetings due today from Inbox and Calendar."
-      actionHref="/inbox/calendar"
+      actionHref="/calendar"
       actionLabel="Calendar"
     >
       {snapshot.agenda.length === 0 ? (

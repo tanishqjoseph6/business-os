@@ -22,11 +22,16 @@ export function normalizeProviderError(
           ? "rate_limited"
           : lower.includes("timeout") || lower.includes("timed out")
             ? "timeout"
-            : status === 400 || lower.includes("invalid request")
+            : lower.includes("model_not_found") ||
+                lower.includes("does not exist") ||
+                lower.includes("invalid model") ||
+                lower.includes("unknown model")
               ? "invalid_request"
-              : status !== undefined && status >= 500
-                ? "unavailable"
-                : "unknown";
+              : status === 400 || lower.includes("invalid request")
+                ? "invalid_request"
+                : status !== undefined && status >= 500
+                  ? "unavailable"
+                  : "unknown";
 
   return new AiProviderError(message || "AI provider request failed.", {
     code,

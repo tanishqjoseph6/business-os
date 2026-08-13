@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Badge } from "@repo/ui/badge";
 import type { DashboardSnapshot } from "@repo/types";
-import { formatCurrency, formatRelative } from "./format";
+import { formatCurrency } from "./format";
+import { ClientRelativeTime } from "./client-relative-time";
 import { EmptyState, SectionShell } from "./section-shell";
 
 export function FinanceSnapshot({ snapshot }: { snapshot: DashboardSnapshot }) {
@@ -11,8 +12,8 @@ export function FinanceSnapshot({ snapshot }: { snapshot: DashboardSnapshot }) {
     <SectionShell
       title="Finance Snapshot"
       description="Pipeline value and credit activity from CRM and billing."
-      actionHref="/crm/deals"
-      actionLabel="Deals"
+      actionHref="/finance"
+      actionLabel="Finance"
     >
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Metric label="Pipeline" value={formatCurrency(finance.pipelineValue)} />
@@ -63,7 +64,7 @@ export function FinanceSnapshot({ snapshot }: { snapshot: DashboardSnapshot }) {
                   {credit.reason}
                 </span>
                 <span className="text-xs text-muted">
-                  {formatRelative(credit.createdAt)}
+                  <ClientRelativeTime iso={credit.createdAt} />
                 </span>
               </span>
               <Badge variant={credit.amount < 0 ? "warning" : "success"}>

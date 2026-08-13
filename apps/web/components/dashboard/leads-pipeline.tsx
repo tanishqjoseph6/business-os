@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Badge } from "@repo/ui/badge";
 import type { DashboardSnapshot } from "@repo/types";
-import { formatCurrency, formatRelative } from "./format";
+import { formatCurrency } from "./format";
+import { ClientRelativeTime } from "./client-relative-time";
 import { EmptyState, SectionShell } from "./section-shell";
 
 export function LeadsPipeline({ snapshot }: { snapshot: DashboardSnapshot }) {
@@ -56,7 +57,7 @@ export function LeadsPipeline({ snapshot }: { snapshot: DashboardSnapshot }) {
                   </span>
                   <span className="text-xs text-muted">
                     {lead.email ?? lead.source ?? "Lead"} ·{" "}
-                    {formatRelative(lead.updatedAt)}
+                    <ClientRelativeTime iso={lead.updatedAt} />
                   </span>
                 </span>
                 <Badge variant="accent">{lead.stage}</Badge>

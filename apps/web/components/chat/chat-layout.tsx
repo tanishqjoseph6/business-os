@@ -9,13 +9,23 @@ import type { ChatConversation, ChatMessage } from "@repo/types";
 import type { ChatModelOption } from "@repo/ai";
 import type { AiProviderId } from "@repo/ai";
 import {
+  KAIROS_DEFAULT_MODEL,
+  KAIROS_DEFAULT_PLAN,
+  KAIROS_MODEL_STORAGE_KEY,
+  isKairosChatModelId,
+  isKairosModelAllowedForPlan,
+  parseKairosPlanId,
+  type KairosChatModelId,
+  type KairosPlanId,
+} from "@repo/ai/chat/kairos-models";
+import {
   deleteChatConversationAction,
   loadChatConversationAction,
   listChatConversationsAction,
   pinChatConversationAction,
   renameChatConversationAction,
 } from "../../app/(protected)/actions/chat";
-import { streamChatRequest } from "../../lib/chat-stream";
+import { streamChatRequest, ChatStreamRequestError } from "../../lib/chat-stream";
 import { executeKairosActionRequest } from "../../lib/kairos-actions-client";
 import type { KairosActionResponse } from "../../lib/kairos-actions/types";
 import { deriveKairosChatState } from "../kairos/use-kairos-state";
@@ -25,6 +35,7 @@ import { ChatSidebar } from "./chat-sidebar";
 import { Composer } from "./composer";
 import { EmptyState } from "./empty-state";
 import { MessageList } from "./message-list";
+import { UpgradeModal } from "./upgrade-modal";
 import {
   ActionExecutionPanel,
   buildExecutionSteps,
@@ -38,10 +49,11 @@ type ChatLayoutProps = {
   initialConversations: ChatConversation[];
   initialConversationId?: string;
   initialMessages: ChatMessage[];
-  models: ChatModelOption[];
-  initialModel: string;
-  initialProvider: AiProviderId;
+  models?: ChatModelOption[];
+  initialModel?: string;
+  initialProvider?: AiProviderId;
   initialCreditBalance: number;
+  plan?: KairosPlanId;
   initialPrompt?: string;
   variant?: "page" | "panel";
   streamEndpoint?: string;
@@ -51,13 +63,14 @@ function createLocalMessage(input: {
   role: ChatMessage["role"];
   content: string;
   conversationId: string;
+  model?: string | null;
 }): ChatMessage {
   return {
     id: `local-${crypto.randomUUID()}`,
     conversationId: input.conversationId,
     role: input.role,
     content: input.content,
-    model: null,
+    model: input.model ?? null,
     inputTokens: 0,
     outputTokens: 0,
     createdAt: new Date().toISOString(),
@@ -105,10 +118,8 @@ export function ChatLayout({
   initialConversations,
   initialConversationId,
   initialMessages,
-  models,
-  initialModel,
-  initialProvider,
   initialCreditBalance,
+  plan: planProp,
   initialPrompt,
   variant = "page",
   streamEndpoint = "/api/chat/stream",
@@ -122,8 +133,10 @@ export function ChatLayout({
   );
   const [messages, setMessages] = React.useState<ChatMessage[]>(initialMessages);
   const [draft, setDraft] = React.useState(initialPrompt ?? "");
-  const [model, setModel] = React.useState(initialModel);
-  const [provider, setProvider] = React.useState<AiProviderId>(initialProvider);
+  const plan = parseKairosPlanId(planProp, KAIROS_DEFAULT_PLAN);
+  const [model, setModel] = React.useState<KairosChatModelId>(KAIROS_DEFAULT_MODEL);
+  const [modelReady, setModelReady] = React.useState(false);
+  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
   const [creditBalance, setCreditBalance] = React.useState(initialCreditBalance);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isStreaming, setIsStreaming] = React.useState(false);
@@ -131,6 +144,9 @@ export function ChatLayout({
   const [usageLabel, setUsageLabel] = React.useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [errorCode, setErrorCode] = React.useState<
+    "model_unavailable" | "rate_limited" | "upgrade_required" | "generic" | null
+  >(null);
   const [isOnline, setIsOnline] = React.useState(true);
   const [lastAttempt, setLastAttempt] = React.useState<{
     message: string;
@@ -176,6 +192,28 @@ export function ChatLayout({
   }, []);
 
   React.useEffect(() => {
+    const stored = window.localStorage.getItem(KAIROS_MODEL_STORAGE_KEY);
+    if (isKairosChatModelId(stored) && isKairosModelAllowedForPlan(stored, plan)) {
+      setModel(stored);
+    } else {
+      setModel(KAIROS_DEFAULT_MODEL);
+    }
+    setModelReady(true);
+  }, [plan]);
+
+  React.useEffect(() => {
+    if (!modelReady) return;
+    const next = isKairosModelAllowedForPlan(model, plan)
+      ? model
+      : KAIROS_DEFAULT_MODEL;
+    if (next !== model) {
+      setModel(next);
+      return;
+    }
+    window.localStorage.setItem(KAIROS_MODEL_STORAGE_KEY, next);
+  }, [model, modelReady, plan]);
+
+  React.useEffect(() => {
     if (searchTimer.current) {
       window.clearTimeout(searchTimer.current);
     }
@@ -198,6 +236,7 @@ export function ChatLayout({
 
   async function selectConversation(conversationId: string) {
     setError(null);
+    setErrorCode(null);
     setActiveId(conversationId);
     const result = await loadChatConversationAction({ conversationId });
     if (!result.ok) {
@@ -205,8 +244,6 @@ export function ChatLayout({
       return;
     }
     setMessages(result.data.messages.filter((m) => m.role !== "system"));
-    setModel(result.data.conversation.model);
-    setProvider(result.data.conversation.provider);
     setUsageLabel(null);
   }
 
@@ -216,6 +253,7 @@ export function ChatLayout({
     setDraft("");
     setUsageLabel(null);
     setError(null);
+    setErrorCode(null);
     setActionTimeline([]);
     setActionPhase(null);
     setPendingConfirmation(null);
@@ -231,6 +269,7 @@ export function ChatLayout({
     setActionStatusLabel("Thinking...");
     setActionPhase("thinking");
     setError(null);
+    setErrorCode(null);
 
     const selectedRecords = selectedCustomerId
       ? [{ type: "customer", id: selectedCustomerId }]
@@ -323,12 +362,19 @@ export function ChatLayout({
     message: string;
     conversationId?: string;
     regenerate?: boolean;
+    modelOverride?: KairosChatModelId;
   }) {
     if (!isOnline) {
       setError("You are offline. Reconnect to continue chatting with Kairos.");
       return;
     }
+    const requestModel = input.modelOverride ?? model;
+    if (!isKairosModelAllowedForPlan(requestModel, plan)) {
+      setUpgradeOpen(true);
+      return;
+    }
     setError(null);
+    setErrorCode(null);
     setLastAttempt(input);
     setIsStreaming(true);
     setStreamingContent("");
@@ -357,8 +403,8 @@ export function ChatLayout({
         {
           conversationId,
           message: input.message,
-          model,
-          provider,
+          model: requestModel,
+          provider: "openai",
           regenerate: input.regenerate,
           signal: controller.signal,
           endpoint: streamEndpoint,
@@ -397,6 +443,7 @@ export function ChatLayout({
                   role: "assistant",
                   content: event.content,
                   conversationId: conversationId ?? "unknown",
+                  model: requestModel,
                 });
                 assistant.id = event.messageId;
                 const persisted = prev.filter((m) => !m.id.startsWith("local-"));
@@ -414,6 +461,7 @@ export function ChatLayout({
             if (event.type === "error") {
               streamOk = false;
               setError(event.message);
+              setErrorCode(event.code ?? "generic");
             }
           },
         },
@@ -434,9 +482,19 @@ export function ChatLayout({
         }
       } else {
         setDraft(input.message);
-        setError(
-          streamError instanceof Error ? streamError.message : "Stream failed",
-        );
+        if (
+          streamError instanceof ChatStreamRequestError &&
+          streamError.code === "upgrade_required"
+        ) {
+          setError(streamError.message);
+          setErrorCode("upgrade_required");
+          setUpgradeOpen(true);
+        } else {
+          setError(
+            streamError instanceof Error ? streamError.message : "Stream failed",
+          );
+          setErrorCode("generic");
+        }
       }
     } finally {
       setIsStreaming(false);
@@ -484,6 +542,16 @@ export function ChatLayout({
   async function handleRetry() {
     if (!lastAttempt || isStreaming || actionPhase === "thinking" || actionPhase === "executing") return;
     await runStream(lastAttempt);
+  }
+
+  async function handleSwitchToAuto() {
+    setModel(KAIROS_DEFAULT_MODEL);
+    setError(null);
+    setErrorCode(null);
+    if (!lastAttempt || isStreaming || actionPhase === "thinking" || actionPhase === "executing") {
+      return;
+    }
+    await runStream({ ...lastAttempt, modelOverride: KAIROS_DEFAULT_MODEL });
   }
 
   async function handleRegenerate() {
@@ -639,7 +707,25 @@ export function ChatLayout({
         {error ? (
           <div className="flex shrink-0 items-center justify-between gap-3 border-b border-error/30 bg-error/10 px-4 py-2 text-sm text-error sm:px-6" role="alert">
             <span>{error}</span>
-            {lastAttempt ? (
+            {errorCode === "model_unavailable" ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void handleSwitchToAuto()}
+                disabled={!isOnline || isStreaming}
+              >
+                Switch to Auto
+              </Button>
+            ) : errorCode === "upgrade_required" ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setUpgradeOpen(true)}
+              >
+                Upgrade to Pro
+              </Button>
+            ) : lastAttempt ? (
               <Button type="button" variant="secondary" size="sm" onClick={() => void handleRetry()} disabled={!isOnline || isStreaming}>
                 Retry
               </Button>
@@ -703,6 +789,7 @@ export function ChatLayout({
                         role: "assistant",
                         content: streamingContent,
                         conversationId: activeId ?? "pending",
+                        model,
                       }),
                     ]
                   : messages
@@ -732,16 +819,20 @@ export function ChatLayout({
             onStop={handleStop}
             disabled={!isOnline}
             isStreaming={isStreaming}
-            models={models}
             model={model}
-            provider={provider}
-            onModelChange={(nextModel, nextProvider) => {
-              setModel(nextModel);
-              setProvider(nextProvider);
+            onModelChange={(next) => {
+              if (!isKairosModelAllowedForPlan(next, plan)) {
+                setUpgradeOpen(true);
+                return;
+              }
+              setModel(next);
             }}
+            plan={plan}
+            onLockedModel={() => setUpgradeOpen(true)}
           />
         </div>
       </div>
+      <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   buildGatewayMessages,
   resolveModelSelection,
 } from "./context";
+import { classifyKairosProviderError } from "./kairos-models";
 import { truncateForTitle } from "./messages";
 import { chatEventsToReadableStream } from "./streaming";
 import type { ChatStreamEvent, ChatTurnInput } from "./types";
@@ -100,8 +101,10 @@ export function createChatService(deps: ChatServiceDeps) {
     const selection = resolveModelSelection({
       model: input.model,
       provider: input.provider,
-      fallbackModel: conversation?.model ?? "gpt-4o-mini",
+      message: input.message,
+      fallbackModel: conversation?.model ?? "auto",
       fallbackProvider: conversation?.provider ?? "openai",
+      plan: input.plan,
     });
 
     if (!conversationId) {
@@ -109,17 +112,17 @@ export function createChatService(deps: ChatServiceDeps) {
         workspaceId: input.workspaceId,
         userId: input.userId,
         title: truncateForTitle(input.message),
-        model: selection.model,
+        model: selection.preference,
         provider: selection.provider,
       });
       conversationId = created.id;
     } else if (
-      selection.model !== conversation?.model ||
+      selection.preference !== conversation?.model ||
       selection.provider !== conversation?.provider
     ) {
       await deps.chatRepo.updateConversation({
         conversationId,
-        model: selection.model,
+        model: selection.preference,
         provider: selection.provider,
       });
     }
@@ -283,9 +286,11 @@ export function createChatService(deps: ChatServiceDeps) {
           };
           yield { type: "done" };
         } catch (error) {
+          const classified = classifyKairosProviderError(error);
           yield {
             type: "error",
-            message: error instanceof Error ? error.message : "Chat failed",
+            message: classified.message,
+            code: classified.code,
           };
         }
       }

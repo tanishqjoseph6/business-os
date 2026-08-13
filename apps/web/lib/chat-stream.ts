@@ -20,6 +20,26 @@ export type StreamChatCallbacks = {
   onEvent: (event: ChatStreamEvent) => void;
 };
 
+export type StreamChatHttpErrorPayload = {
+  error?: string;
+  code?: string;
+  requiredPlan?: string;
+};
+
+export class ChatStreamRequestError extends Error {
+  status: number;
+  code?: string;
+  requiredPlan?: string;
+
+  constructor(message: string, status: number, code?: string, requiredPlan?: string) {
+    super(message);
+    this.name = "ChatStreamRequestError";
+    this.status = status;
+    this.code = code;
+    this.requiredPlan = requiredPlan;
+  }
+}
+
 export async function streamChatRequest(
   input: StreamChatInput,
   callbacks: StreamChatCallbacks,
@@ -41,13 +61,17 @@ export async function streamChatRequest(
 
   if (!response.ok) {
     let message = "Chat request failed";
+    let code: string | undefined;
+    let requiredPlan: string | undefined;
     try {
-      const payload = (await response.json()) as { error?: string };
+      const payload = (await response.json()) as StreamChatHttpErrorPayload;
       message = payload.error ?? message;
+      code = payload.code;
+      requiredPlan = payload.requiredPlan;
     } catch {
       // ignore
     }
-    throw new Error(message);
+    throw new ChatStreamRequestError(message, response.status, code, requiredPlan);
   }
 
   const reader = response.body?.getReader();

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import type { ChatConversation, ChatMessage } from "@repo/types";
-import type { AiProviderId, ChatModelOption } from "@repo/ai";
+import type { AiProviderId } from "@repo/ai";
+import { KAIROS_DEFAULT_MODEL, parseKairosPlanId, type KairosPlanId } from "@repo/ai/chat/kairos-models";
 import { X } from "lucide-react";
 import { Button } from "@repo/ui/button";
 import { Spinner } from "@repo/ui/spinner";
@@ -17,10 +18,10 @@ import { useKairosChat } from "./kairos-chat-provider";
 
 type PanelBootstrap = {
   conversations: ChatConversation[];
-  models: ChatModelOption[];
   initialModel: string;
   initialProvider: AiProviderId;
   creditBalance: number;
+  plan: KairosPlanId;
 };
 
 export function KairosChatPanel() {
@@ -59,13 +60,12 @@ export function KairosChatPanel() {
         return;
       }
 
-      const models = settings.data.models;
       setBootstrap({
         conversations: conversations.data.conversations,
-        models,
-        initialModel: models[0]?.model ?? "gpt-4o-mini",
-        initialProvider: models[0]?.provider ?? "openai",
+        initialModel: KAIROS_DEFAULT_MODEL,
+        initialProvider: "openai",
         creditBalance: settings.data.credits.balance,
+        plan: parseKairosPlanId(settings.data.plan),
       });
       setLoading(false);
     }
@@ -174,10 +174,10 @@ export function KairosChatPanel() {
                   streamEndpoint="/api/kairos/chat"
                   initialConversations={bootstrap.conversations}
                   initialMessages={[] as ChatMessage[]}
-                  models={bootstrap.models}
                   initialModel={bootstrap.initialModel}
                   initialProvider={bootstrap.initialProvider}
                   initialCreditBalance={bootstrap.creditBalance}
+                  plan={bootstrap.plan}
                   initialPrompt={initialPrompt}
                 />
               ) : null}

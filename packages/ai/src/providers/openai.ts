@@ -103,13 +103,27 @@ function toOpenAIMessages(request: AiCompletionRequest) {
   });
 }
 
+function isGpt5Family(model: string) {
+  return model.startsWith("gpt-5");
+}
+
 function buildBody(request: AiCompletionRequest) {
   const body: Record<string, unknown> = {
     model: request.model,
     messages: toOpenAIMessages(request),
-    temperature: request.temperature,
-    max_tokens: request.maxTokens,
   };
+
+  if (request.maxTokens) {
+    if (isGpt5Family(request.model)) {
+      body.max_completion_tokens = request.maxTokens;
+    } else {
+      body.max_tokens = request.maxTokens;
+    }
+  }
+
+  if (request.temperature !== undefined && !isGpt5Family(request.model)) {
+    body.temperature = request.temperature;
+  }
 
   if (request.tools?.length) {
     body.tools = request.tools.map((tool) => ({
@@ -249,7 +263,10 @@ export function createOpenAIProvider(config: ProviderConfig = {}): AiProvider {
 
       if (!response.ok || !response.body) {
         const text = await response.text();
-        yield { type: "error", error: `HTTP ${response.status}: ${text}` };
+        yield {
+          type: "error",
+          error: `HTTP ${response.status}: ${text.slice(0, 800)}`,
+        };
         return;
       }
 

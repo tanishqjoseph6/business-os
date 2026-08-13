@@ -20,6 +20,7 @@ import {
   type ToolActivity,
 } from "./structured-response";
 import { ClientTime } from "./client-time";
+import { kairosModelDisplayName } from "@repo/ai/chat/kairos-models";
 
 type MessageProps = {
   message: ChatMessage;
@@ -131,8 +132,13 @@ export function Message({
         )}
       >
         {!isUser ? (
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary/90">
-            Kairos
+          <p className="flex items-baseline gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary/90">
+            <span>Kairos</span>
+            {kairosModelDisplayName(message.model) ? (
+              <span className="font-medium normal-case tracking-normal text-muted">
+                {kairosModelDisplayName(message.model)}
+              </span>
+            ) : null}
           </p>
         ) : null}
 

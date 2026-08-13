@@ -68,10 +68,18 @@ export const renameConversationSchema = z.object({
   title: z.string().trim().min(1).max(120),
 });
 
+export const kairosChatModelSchema = z.enum([
+  "auto",
+  "gpt-5.1",
+  "gpt-5",
+  "gpt-5-mini",
+  "gpt-5-nano",
+]);
+
 export const chatStreamRequestSchema = z.object({
   conversationId: z.string().uuid().optional(),
   message: z.string().trim().min(1).max(32000),
-  model: z.string().min(1).optional(),
+  model: kairosChatModelSchema.optional(),
   provider: chatProviderSchema.optional(),
   regenerate: z.boolean().optional(),
   kairosContext: z

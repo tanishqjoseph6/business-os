@@ -3,6 +3,42 @@ import type { AiProviderId, ModelRoute, RoutingStrategy } from "../types/ai";
 /** Curated model catalog for routing + cost estimates. */
 export const MODEL_CATALOG: ModelRoute[] = [
   {
+    id: "openai:gpt-5.1",
+    provider: "openai",
+    model: "gpt-5.1",
+    capabilities: ["chat", "tools", "json", "streaming"],
+    costPer1kInput: 0.00125,
+    costPer1kOutput: 0.01,
+    priority: 99,
+  },
+  {
+    id: "openai:gpt-5",
+    provider: "openai",
+    model: "gpt-5",
+    capabilities: ["chat", "tools", "json", "streaming"],
+    costPer1kInput: 0.00125,
+    costPer1kOutput: 0.01,
+    priority: 97,
+  },
+  {
+    id: "openai:gpt-5-mini",
+    provider: "openai",
+    model: "gpt-5-mini",
+    capabilities: ["chat", "tools", "json", "streaming"],
+    costPer1kInput: 0.00025,
+    costPer1kOutput: 0.002,
+    priority: 86,
+  },
+  {
+    id: "openai:gpt-5-nano",
+    provider: "openai",
+    model: "gpt-5-nano",
+    capabilities: ["chat", "tools", "json", "streaming"],
+    costPer1kInput: 0.00005,
+    costPer1kOutput: 0.0004,
+    priority: 78,
+  },
+  {
     id: "openai:gpt-4o-mini",
     provider: "openai",
     model: "gpt-4o-mini",

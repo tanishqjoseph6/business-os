@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 import { Badge } from "@repo/ui/badge";
 import type { DashboardSnapshot } from "@repo/types";
-import { formatRelative } from "./format";
+import { ClientRelativeTime } from "./client-relative-time";
 import { EmptyState, SectionShell } from "./section-shell";
 
 export function NotificationsPanel({
@@ -45,7 +45,7 @@ export function NotificationsPanel({
                     </span>
                   ) : null}
                   <span className="mt-1 block text-[11px] text-muted">
-                    {formatRelative(notification.createdAt)}
+                    <ClientRelativeTime iso={notification.createdAt} />
                   </span>
                 </span>
               </Link>

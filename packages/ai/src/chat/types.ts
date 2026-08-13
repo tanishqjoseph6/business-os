@@ -5,7 +5,11 @@ export type ChatStreamEvent =
   | { type: "text_delta"; text: string }
   | { type: "usage"; usage: AiUsage; cost: AiCost; credits: number; balance: number }
   | { type: "message"; messageId: string; role: "assistant"; content: string }
-  | { type: "error"; message: string }
+  | {
+      type: "error";
+      message: string;
+      code?: "model_unavailable" | "rate_limited" | "upgrade_required" | "generic";
+    }
   | { type: "done" };
 
 export type ChatContext = {
@@ -23,6 +27,8 @@ export type ChatTurnInput = {
   message: string;
   model?: string;
   provider?: AiProviderId;
+  /** Server-resolved billing plan. Defaults to free if omitted. */
+  plan?: "free" | "pro" | "business";
   regenerate?: boolean;
   kairosContext?: {
     currentPage?: string;

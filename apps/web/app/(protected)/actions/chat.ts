@@ -18,7 +18,8 @@ import {
   renameConversationSchema,
   searchConversationsSchema,
 } from "@repo/types";
-import { groupChatModelsByProvider, listChatModels } from "@repo/ai";
+import { listKairosChatModels } from "@repo/ai";
+import { getWorkspacePlan } from "@repo/database/billing";
 import { resolveActiveWorkspace } from "../../../lib/workspace-context";
 
 export type ChatActionResult<T> =
@@ -218,20 +219,23 @@ export async function loadChatConversationAction(input: {
 
 export async function getChatBootstrapAction(): Promise<
   ChatActionResult<{
-    models: ReturnType<typeof listChatModels>;
-    modelsByProvider: ReturnType<typeof groupChatModelsByProvider>;
+    models: ReturnType<typeof listKairosChatModels>;
     credits: Awaited<ReturnType<typeof getWorkspaceCredits>>;
+    plan: Awaited<ReturnType<typeof getWorkspacePlan>>;
   }>
 > {
   try {
     const ctx = await requireWorkspaceContext();
-    const credits = await getWorkspaceCredits({ workspaceId: ctx.workspaceId });
+    const [credits, plan] = await Promise.all([
+      getWorkspaceCredits({ workspaceId: ctx.workspaceId }),
+      getWorkspacePlan({ workspaceId: ctx.workspaceId, userId: ctx.userId }),
+    ]);
     return {
       ok: true,
       data: {
-        models: listChatModels(),
-        modelsByProvider: groupChatModelsByProvider(),
+        models: listKairosChatModels(),
         credits,
+        plan,
       },
     };
   } catch (error) {

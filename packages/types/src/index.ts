@@ -273,6 +273,7 @@ export type {
 
 export {
   chatProviderSchema,
+  kairosChatModelSchema,
   createConversationSchema,
   renameConversationSchema,
   chatStreamRequestSchema,

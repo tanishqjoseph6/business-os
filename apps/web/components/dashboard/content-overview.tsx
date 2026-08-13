@@ -2,7 +2,7 @@ import Link from "next/link";
 import { FileText, Inbox, PenLine } from "lucide-react";
 import { Badge } from "@repo/ui/badge";
 import type { DashboardSnapshot } from "@repo/types";
-import { formatRelative } from "./format";
+import { ClientRelativeTime } from "./client-relative-time";
 import { EmptyState, SectionShell } from "./section-shell";
 
 export function ContentOverview({ snapshot }: { snapshot: DashboardSnapshot }) {
@@ -10,8 +10,8 @@ export function ContentOverview({ snapshot }: { snapshot: DashboardSnapshot }) {
     <SectionShell
       title="Content Overview"
       description="Inbox drafts, summaries, and content signals across your workspace."
-      actionHref="/inbox"
-      actionLabel="Inbox"
+      actionHref="/content"
+      actionLabel="Content OS"
     >
       <div className="mb-4 grid grid-cols-3 gap-2">
         <StatChip label="AI drafts" value={snapshot.content.aiDrafts} />
@@ -57,7 +57,7 @@ export function ContentOverview({ snapshot }: { snapshot: DashboardSnapshot }) {
                     {item.subtitle}
                   </span>
                   <span className="mt-1 block text-[11px] text-muted">
-                    {formatRelative(item.updatedAt)}
+                    <ClientRelativeTime iso={item.updatedAt} />
                   </span>
                 </span>
               </Link>

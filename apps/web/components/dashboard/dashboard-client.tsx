@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion, useReducedMotion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import type { DashboardSnapshot } from "@repo/types";
 import {
@@ -27,15 +26,7 @@ const LazyOnboardingChecklist = dynamic(
     import("../ai/onboarding-checklist").then(
       (module) => module.OnboardingChecklist,
     ),
-    { loading: () => <SkeletonBlock className="h-48" />, ssr: false },
-);
-
-const LazyKairosSuggestions = dynamic(
-  () =>
-    import("../ai/kairos-suggestions").then(
-      (module) => module.KairosSuggestions,
-    ),
-  { loading: () => <SkeletonBlock className="h-32" />, ssr: false },
+  { loading: () => <SkeletonBlock className="h-40" />, ssr: false },
 );
 
 const LazyActivityTimeline = dynamic(
@@ -46,26 +37,21 @@ const LazyActivityTimeline = dynamic(
   { loading: () => <SkeletonBlock className="h-72" />, ssr: false },
 );
 
-const sectionMotion = {
-  hidden: { opacity: 0, y: 10 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.24, ease: [0.16, 1, 0.3, 1] as const },
-  },
-};
-
 export function DashboardClient({
   initialSnapshot,
   workspaceId,
-  email,
+  greeting,
+  displayName,
+  dateLabel,
 }: {
   initialSnapshot: DashboardSnapshot;
   workspaceId: string;
   email: string | null;
+  greeting: string;
+  displayName: string;
+  dateLabel: string;
 }) {
   const router = useRouter();
-  const reducedMotion = useReducedMotion();
   const { data: snapshot, isFetching } = useQuery({
     queryKey: ["dashboard", workspaceId],
     queryFn: async () => {
@@ -81,101 +67,74 @@ export function DashboardClient({
   });
 
   useEffect(() => {
-    ["/inbox", "/crm", "/calendar", "/analytics", "/chat"].forEach((href) =>
-      router.prefetch(href),
+    ["/inbox", "/crm", "/calendar", "/analytics", "/chat", "/projects"].forEach(
+      (href) => router.prefetch(href),
     );
   }, [router]);
 
   if (!snapshot) return <DashboardSkeleton />;
 
   return (
-    <motion.div
-      className="mx-auto flex w-full max-w-7xl flex-col gap-6"
-      initial={reducedMotion ? false : "hidden"}
-      animate={reducedMotion ? false : "visible"}
-      variants={{
-        hidden: {},
-        visible: { transition: { staggerChildren: 0.035 } },
-      }}
-    >
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 sm:gap-6">
       {isFetching ? (
         <span className="sr-only" role="status">
           Refreshing dashboard
         </span>
       ) : null}
 
-      <motion.div variants={sectionMotion}>
-        <WelcomeHeader
-          workspaceName={snapshot.workspace.name}
-          email={email}
-          role={snapshot.workspace.role}
-          members={snapshot.workspace.members}
-          pendingInvites={snapshot.workspace.pendingInvites}
-        />
-      </motion.div>
+      <WelcomeHeader
+        greeting={greeting}
+        displayName={displayName}
+        workspaceName={snapshot.workspace.name}
+        role={snapshot.workspace.role}
+        members={snapshot.workspace.members}
+        pendingInvites={snapshot.workspace.pendingInvites}
+        dateLabel={dateLabel}
+      />
 
-      <motion.div variants={sectionMotion}>
-        <KpiCards snapshot={snapshot} />
-      </motion.div>
+      <KpiCards snapshot={snapshot} />
 
-      <motion.div variants={sectionMotion}>
-        <LazyOnboardingChecklist compact />
-      </motion.div>
+      <LazyOnboardingChecklist compact />
 
-      <motion.div variants={sectionMotion}>
-        <LazyKairosSuggestions />
-      </motion.div>
-
-      <motion.div
-        variants={sectionMotion}
-        className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]"
-      >
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <AiCommandCenter snapshot={snapshot} />
-        <TodaysAgenda snapshot={snapshot} />
-      </motion.div>
+        <div className="flex flex-col gap-4">
+          <TodaysAgenda snapshot={snapshot} />
+          <QuickActions />
+        </div>
+      </div>
 
-      <motion.div
-        variants={sectionMotion}
-        className="grid gap-4 lg:grid-cols-3"
-      >
+      <div className="grid gap-4 lg:grid-cols-3">
         <RecentConversations snapshot={snapshot} />
         <ContentOverview snapshot={snapshot} />
-        <FinanceSnapshot snapshot={snapshot} />
-      </motion.div>
+        <NotificationsPanel snapshot={snapshot} />
+      </div>
 
-      <motion.div
-        variants={sectionMotion}
-        className="grid gap-4 lg:grid-cols-2"
-      >
+      <div className="grid gap-4 lg:grid-cols-2">
         <LeadsPipeline snapshot={snapshot} />
         <GrowthAnalytics snapshot={snapshot} />
-      </motion.div>
+      </div>
 
-      <motion.div
-        variants={sectionMotion}
-        className="grid gap-4 lg:grid-cols-2"
-      >
-        <QuickActions />
-        <NotificationsPanel snapshot={snapshot} />
-      </motion.div>
-
-      <motion.section variants={sectionMotion} className="space-y-3">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
-              Workspace timeline
-            </p>
-            <h2 className="text-lg font-semibold">Recent activity</h2>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <FinanceSnapshot snapshot={snapshot} />
+        <section className="rounded-2xl border border-border/70 bg-[#12121a]/70 p-5">
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                Workspace timeline
+              </p>
+              <h2 className="text-lg font-semibold text-foreground">Recent activity</h2>
+            </div>
+            <a
+              href="/ai/activity"
+              className="text-xs font-semibold text-primary hover:underline"
+            >
+              Open full timeline
+            </a>
           </div>
-          <a
-            href="/ai/activity"
-            className="text-xs font-semibold text-primary hover:underline"
-          >
-            Open full timeline
-          </a>
-        </div>
-        <LazyActivityTimeline initialEvents={snapshot.activity.slice(0, 12)} />
-      </motion.section>
-    </motion.div>
+          <LazyActivityTimeline initialEvents={snapshot.activity.slice(0, 12)} />
+        </section>
+      </div>
+    </div>
   );
 }

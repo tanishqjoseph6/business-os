@@ -21,6 +21,39 @@ export {
 } from "./session";
 export type { ChatSessionDeps } from "./session";
 export {
+  KAIROS_CHAT_MODELS,
+  KAIROS_CHAT_MODEL_IDS,
+  KAIROS_DEFAULT_MODEL,
+  KAIROS_DEFAULT_PLAN,
+  KAIROS_MODEL_GROUPS,
+  KAIROS_MODEL_STORAGE_KEY,
+  KAIROS_PLAN_MODEL_ALLOWLIST,
+  KAIROS_UPGRADE_MESSAGE,
+  listKairosChatModels,
+  parseKairosChatModelId,
+  parseKairosPlanId,
+  isKairosChatModelId,
+  isKairosPlanId,
+  isKairosModelAllowedForPlan,
+  authorizeKairosChatModel,
+  clampKairosModelToPlan,
+  requiredPlanForKairosModel,
+  resolveKairosApiModel,
+  routeKairosAuto,
+  kairosModelDisplayName,
+  classifyKairosProviderError,
+  getKairosChatModel,
+} from "./kairos-models";
+export type {
+  KairosChatModelId,
+  KairosChatModelOption,
+  KairosChatErrorCode,
+  KairosResolvedModelId,
+  KairosPlanId,
+  KairosModelAuthorization,
+  KairosModelGroupId,
+} from "./kairos-models";
+export {
   encodeSseEvent,
   chatEventsToReadableStream,
   createSseResponse,

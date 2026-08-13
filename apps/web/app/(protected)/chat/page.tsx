@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
-import { listChatModels } from "@repo/ai";
+import { KAIROS_DEFAULT_MODEL, listKairosChatModels } from "@repo/ai";
 import { listConversations, listMessages } from "@repo/database/chat";
 import { getWorkspaceCredits } from "@repo/database/credits";
+import { getWorkspacePlan } from "@repo/database/billing";
 import { ChatLayout } from "../../../components/chat/chat-layout";
 import { resolveActiveWorkspace } from "../../../lib/workspace-context";
 
@@ -21,29 +22,25 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   const conversationId = params.c;
   const initialPrompt = params.prompt?.trim() || undefined;
 
-  const [conversations, credits] = await Promise.all([
+  const [conversations, credits, plan] = await Promise.all([
     listConversations({
       workspaceId: context.active.workspace.id,
       userId: context.userId,
     }),
     getWorkspaceCredits({ workspaceId: context.active.workspace.id }),
+    getWorkspacePlan({
+      workspaceId: context.active.workspace.id,
+      userId: context.userId,
+    }),
   ]);
-
-  const models = listChatModels();
-  const defaultModel = models[0]?.model ?? "gpt-4o-mini";
-  const defaultProvider = models[0]?.provider ?? "openai";
 
   let initialMessages: Awaited<ReturnType<typeof listMessages>> = [];
   let activeConversationId = conversationId;
-  let activeModel = defaultModel;
-  let activeProvider = defaultProvider;
 
   if (conversationId) {
     const conversation = conversations.find((item) => item.id === conversationId);
     if (conversation) {
       initialMessages = await listMessages({ conversationId });
-      activeModel = conversation.model;
-      activeProvider = conversation.provider;
     } else {
       activeConversationId = undefined;
     }
@@ -54,10 +51,11 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
       initialConversations={conversations}
       initialConversationId={activeConversationId}
       initialMessages={initialMessages.filter((m) => m.role !== "system")}
-      models={models}
-      initialModel={activeModel}
-      initialProvider={activeProvider}
+      models={listKairosChatModels()}
+      initialModel={KAIROS_DEFAULT_MODEL}
+      initialProvider="openai"
       initialCreditBalance={credits.balance}
+      plan={plan}
       initialPrompt={initialPrompt}
     />
   );

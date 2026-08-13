@@ -1,79 +1,124 @@
+"use client";
+
 import Link from "next/link";
 import {
-  Bot,
+  Briefcase,
   CalendarDays,
-  Inbox,
+  FileText,
+  Globe,
   MailPlus,
+  Sparkles,
   Target,
   Users,
 } from "lucide-react";
+import { useKairosChat } from "../kairos/chat";
 import { SectionShell } from "./section-shell";
 
 const ACTIONS = [
   {
+    id: "kairos",
     label: "Ask Kairos",
     description: "Open your AI copilot",
     href: "/chat",
-    icon: Bot,
+    icon: Sparkles,
+    kairos: true,
   },
   {
-    label: "Inbox",
-    description: "Review unread threads",
-    href: "/inbox",
-    icon: Inbox,
-  },
-  {
-    label: "Add lead",
-    description: "Capture a new opportunity",
-    href: "/crm/leads",
+    id: "deal",
+    label: "Create a deal",
+    description: "Add to CRM pipeline",
+    href: "/crm/deals",
     icon: Target,
   },
   {
-    label: "Schedule",
-    description: "View calendar",
-    href: "/inbox/calendar",
-    icon: CalendarDays,
+    id: "customer",
+    label: "Add customer",
+    description: "Create a contact",
+    href: "/crm/contacts",
+    icon: Users,
   },
   {
-    label: "Compose reply",
-    description: "Jump into inbox replies",
+    id: "email",
+    label: "Draft an email",
+    description: "Jump into Inbox",
     href: "/inbox",
     icon: MailPlus,
   },
   {
-    label: "Invite team",
-    description: "Grow the workspace",
-    href: "/team",
-    icon: Users,
+    id: "content",
+    label: "Create content",
+    description: "Open Content OS",
+    href: "/content",
+    icon: FileText,
+  },
+  {
+    id: "meeting",
+    label: "Schedule meeting",
+    description: "Open Calendar OS",
+    href: "/calendar",
+    icon: CalendarDays,
+  },
+  {
+    id: "project",
+    label: "Create project",
+    description: "Start delivery work",
+    href: "/projects",
+    icon: Briefcase,
+  },
+  {
+    id: "website",
+    label: "Generate website",
+    description: "Open Website OS",
+    href: "/website",
+    icon: Globe,
   },
 ] as const;
 
 export function QuickActions() {
+  const { openChat } = useKairosChat();
+
   return (
     <SectionShell
-      title="Quick Actions"
-      description="Jump into the highest-leverage workspace workflows."
+      title="Quick actions"
+      description="Jump into the highest-leverage workflows across VanderBase."
     >
       <div className="grid gap-2 sm:grid-cols-2">
         {ACTIONS.map((action) => {
           const Icon = action.icon;
-          return (
-            <Link
-              key={action.label}
-              href={action.href}
-              className="group flex items-center gap-3 rounded-xl border border-border bg-elevated px-3 py-3 transition duration-200 hover:border-primary/40 hover:bg-surface"
-            >
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-muted text-primary transition group-hover:scale-105">
+          const content = (
+            <>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary transition group-hover:bg-primary/15">
                 <Icon className="h-4 w-4" aria-hidden />
               </span>
-              <span>
+              <span className="min-w-0">
                 <span className="block text-sm font-medium text-foreground">
                   {action.label}
                 </span>
-                <span className="block text-xs text-muted">
-                  {action.description}
-                </span>
+                <span className="block text-xs text-muted">{action.description}</span>
               </span>
+            </>
+          );
+
+          if ("kairos" in action && action.kairos) {
+            return (
+              <button
+                key={action.id}
+                type="button"
+                onClick={() => openChat()}
+                className="group flex items-center gap-3 rounded-xl border border-border/70 bg-elevated/50 px-3 py-3 text-left transition duration-200 hover:border-primary/40 hover:bg-surface"
+              >
+                {content}
+              </button>
+            );
+          }
+
+          return (
+            <Link
+              key={action.id}
+              href={action.href}
+              className="group flex items-center gap-3 rounded-xl border border-border/70 bg-elevated/50 px-3 py-3 transition duration-200 hover:border-primary/40 hover:bg-surface"
+            >
+              {content}
             </Link>
           );
         })}

@@ -6,7 +6,7 @@ import { IconSparkles } from "@repo/ui/icons";
 import { cn } from "@repo/ui/utils";
 import { Mic, Paperclip } from "lucide-react";
 import { ModelSelector } from "./model-selector";
-import type { ChatModelOption } from "@repo/ai";
+import type { KairosChatModelId, KairosPlanId } from "@repo/ai/chat/kairos-models";
 
 type ComposerProps = {
   value: string;
@@ -15,10 +15,10 @@ type ComposerProps = {
   onStop?: () => void;
   isStreaming?: boolean;
   disabled?: boolean;
-  models: ChatModelOption[];
-  model: string;
-  provider: ChatModelOption["provider"];
-  onModelChange: (model: string, provider: ChatModelOption["provider"]) => void;
+  model: KairosChatModelId;
+  onModelChange: (model: KairosChatModelId) => void;
+  plan?: KairosPlanId;
+  onLockedModel?: () => void;
 };
 
 export function Composer({
@@ -28,10 +28,10 @@ export function Composer({
   onStop,
   isStreaming,
   disabled,
-  models,
   model,
-  provider,
   onModelChange,
+  plan,
+  onLockedModel,
 }: ComposerProps) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -97,11 +97,11 @@ export function Composer({
                 <Mic className="h-4 w-4" aria-hidden />
               </Button>
               <ModelSelector
-                models={models}
                 model={model}
-                provider={provider}
                 onChange={onModelChange}
+                plan={plan}
                 disabled={isStreaming}
+                onLockedSelect={onLockedModel}
               />
             </div>
             <div className="flex items-center gap-2">

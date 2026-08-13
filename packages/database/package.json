@@ -14,6 +14,7 @@
     "./workspace": "./src/workspace.ts",
     "./chat": "./src/chat.ts",
     "./credits": "./src/credits.ts",
+    "./billing": "./src/billing.ts",
     "./notifications": "./src/notifications.ts",
     "./activity": "./src/activity.ts",
     "./workspace-memory": "./src/workspace-memory.ts",

@@ -28,7 +28,7 @@ export function AnimatedMetric({ value }: { value: string }) {
 
   return (
     <motion.span
-      initial={{ opacity: 0, y: 6 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
     >

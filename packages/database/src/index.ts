@@ -43,6 +43,11 @@ export {
   tokensToCredits,
 } from "./credits";
 export {
+  getWorkspacePlan,
+  normalizeWorkspacePlanId,
+  type WorkspacePlanId,
+} from "./billing";
+export {
   listWorkspaceNotifications,
   listNotificationsForUser,
   countUnreadNotificationsForUser,
